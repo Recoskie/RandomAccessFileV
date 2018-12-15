@@ -33,8 +33,7 @@ This is a very high performance IO system for mapping and reading fragmented pos
 1. Method **addV( long FileOffset, long DataLen, long Address, long AddressLen )**
     > ##### Add an address to Virtual address map.
 2. Method **readV()**.
-    > ##### read current byte at virtual address position.
-    > ##### Returns byte as int.
+    > ##### read current byte at virtual address position. <br /> Returns byte as int.
 3. Method **readV( byte[] b )**.
     > ##### read len bytes into byte array from current virtual address pointer.
 4. Method **readV( byte[] b, int off, int len )**.
@@ -46,11 +45,9 @@ This is a very high performance IO system for mapping and reading fragmented pos
 7. Method **writeV( byte[] b, int off, int len )**.
     > ##### Write selected offset bytes from byte array to len at the current virtual address pointer.
 8. Method **seekV( long Address )**.
-    > ##### Seek to a specific virtual address.
-    > ##### Updates "file pointer", and "virtual pointer" relatively.
+    > ##### Seek to a specific virtual address. <br /> Updates "file pointer", and "virtual pointer" relatively.
 9. Method **getVirtualPointer()**.
-    > ##### Get the current virtual address pointer position.
-    > ##### Note "return( super.getFilePointer() + VAddress );".
+    > ##### Get the current virtual address pointer position. <br /> Note "return( super.getFilePointer() + VAddress );".
 10. Method **resetV()**.
     > ##### Resets the virtual address map.
 
