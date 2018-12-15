@@ -53,7 +53,7 @@ This is a very high performance IO system for mapping and reading fragmented pos
 
 Thus all methods from Random access file are extended. See [Random access file documentation](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/RandomAccessFile.html) for the rest of the supported methods.
 
-# Examples.
+# Sample code.
 
 Assuming that we have the following bytes in a file named "File.bin".
 
