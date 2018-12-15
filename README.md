@@ -35,7 +35,7 @@ This is a very high performance IO system for mapping and reading fragmented pos
 2. Method **readV()**.
     > ##### read current byte at virtual address position. <br /> Returns byte as int.
 3. Method **readV( byte[] b )**.
-    > ##### read len bytes into byte array from current virtual address pointer.
+    > ##### Read len bytes into byte array from current virtual address pointer.
 4. Method **readV( byte[] b, int off, int len )**.
     > ##### Read select len bytes into byte array at select offset to write bytes into array b at the current virtual address pointer.
 5. Method **writeV( int byte )**.
@@ -52,3 +52,70 @@ This is a very high performance IO system for mapping and reading fragmented pos
     > ##### Resets the virtual address map.
 
 Thus all methods from Random access file are extended. See [Random access file documentation](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/RandomAccessFile.html) for the rest of the supported methods.
+
+# Examples.
+
+Assuming that we have the following bytes in a file named "File.bin".
+
+```java
+import java.io.*;
+
+public class Sample
+{
+  public Sample()
+  {
+    try
+    {
+      //Create "File.bin", for reading, or writing.
+
+      RandomAccessFileV V = new RandomAccessFileV( new java.io.File("File.bin"), "rw" );
+
+      //Write some bytes.
+
+      V.write( new byte[]{ (byte)0x11, (byte)0x22, (byte)0x33, (byte)0x44, (byte)0x55, (byte)0x66,
+        (byte)0x77, (byte)0x88, (byte)0x99, (byte)0xAA, (byte)0xBB, (byte)0xCC, (byte)0xDD, (byte)0xEE, (byte)0xFF } );
+
+      //Map byte 12 as the first byte. At Virtuall address 0.
+      //Byte 12, 1 byte in length across, At address 0, Thus address length 1.
+
+      V.addV( 12, 1, 0, 1 );
+
+      //Byte 0, 11 byte in length across, At address 1, Thus address length 11.
+
+      V.addV( 0, 11, 1, 11 );
+
+      //Insert byte 13 at address 9.
+      //Byte 13, 1 byte in length across, At address 9, Thus address length 1.
+
+      V.addV( 13, 1, 9, 1 );
+
+      //Read bytes 0 to 12.
+
+      byte[] b = new byte[12];
+
+      V.readV( b );
+
+      //Print byte values.
+
+      for( int i = 0; i < b.length; System.out.print( String.format( "%1$02X", b[ i++ ] ) + "," ) );
+
+      System.out.println("");
+    }
+    catch(Exception e)
+    {
+      //Print error.
+
+      e.printStackTrace(System.out)
+    }
+  }
+
+  public static void main( String[] args )
+  {
+    new Sample();
+  }
+}
+```
+
+In this example we read bytes in mixed order using the readV method. You can mix mapped and unmapped IO.
+This tool can be used for any fragmented format task you wish, or with tables that create an file (compressed formats).
+Modify this sample however you like to get a feel for how the IO system works.
