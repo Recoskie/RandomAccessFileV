@@ -1,6 +1,6 @@
 # RandomAccessFileV
 
-Simulates a ram address space using very little resources, and time on CPU.
+Simulates a ram address space using very little ram Memory, and time on CPU.
 
 This tool is very useful for mapping areas of an file at random positions and reading the data in order using Virtual read, or write operations.
 
