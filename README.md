@@ -105,7 +105,7 @@ public class Sample
     {
       //Print error.
 
-      e.printStackTrace(System.out)
+      e.printStackTrace( System.out );
     }
   }
 
