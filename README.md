@@ -27,3 +27,30 @@ The virtual operations use the original read/write, but seek to the next address
 When using **seekV** anything less than the current virtual address will scan down in index, and anything further away in index will scan up one in index.
 
 This is a very high performance IO system for mapping and reading fragmented positions in a straight line, and at selected virtual address locations. This system allows you to modify programs/files that are bigger than the installed ram memory in your device by reading, and writing directly to the file in an simulated address space.
+
+# Methods.
+
+1. Method **addV( long FileOffset, long DataLen, long Address, long AddressLen )**
+    > ##### Add an address to Virtual address map.
+2. Method **readV()**.
+    > ##### read current byte at virtual address position.
+    > ##### Returns byte as int.
+3. Method **readV( byte[] b )**.
+    > ##### read len bytes into byte array from current virtual address pointer.
+4. Method **readV( byte[] b, int off, int len )**.
+    > ##### Read select len bytes into byte array at select offset to write bytes into array b at the current virtual address pointer.
+5. Method **writeV( int byte )**.
+    > ##### Write a byte at the current virtual address pointer.
+6. Method **writeV( byte[] b )**.
+    > ##### Write the byte array at the current virtual address pointer.
+7. Method **writeV( byte[] b, int off, int len )**.
+    > ##### Write selected offset bytes from byte array to len at the current virtual address pointer.
+8. Method **seekV( long Address )**.
+    > ##### Write selected offset bytes from byte array to len at the current virtual address pointer.
+9. Method **getVirtualPointer()**.
+    > ##### Seek to a specific virtual address.
+    > ##### Updates "file pointer", and "virtual pointer" relatively.
+10. Method **resetV()**.
+    > ##### Resets the virtual address map.
+
+Thus all methods from Random access file are extended. See [Random access file documentation](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/RandomAccessFile.html) for the rest of the supported methods.
