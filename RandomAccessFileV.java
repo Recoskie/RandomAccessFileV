@@ -408,7 +408,7 @@ public class RandomAccessFileV extends RandomAccessFile
       
       else
       {
-        n = (int)( curVra.VLen - ( super.getFilePointer() - curVra.Pos ) );
+        n = (int)( ( curVra.VPos + curVra.Len ) - ( super.getFilePointer() - curVra.Pos ) );
         
         if( n < 0 ) { n = b.length - Pos; }
         
