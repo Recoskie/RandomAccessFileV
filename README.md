@@ -119,3 +119,58 @@ public class Sample
 In this example we read bytes in mixed order using the readV method. You can mix mapped and unmapped IO.
 This tool can be used for any fragmented format task you wish, or with tables that create an file (compressed formats).
 Modify this sample however you like to get a feel for how the IO system works.
+# IO Event handling.
+
+```java
+import java.io.*;
+
+public class MYCommponet extends JComponent implements IOEventListener
+{
+  //Reference to IO stream.
+  
+  private RandomAccessFileV IOStream;
+  
+  //The file system stream.
+
+  public MYCommponet( RandomAccessFileV IO )
+  {
+    //Add event listener to this component when edits, or changes are made in stream by other components.
+    
+    IO.addMyEventListener( this );
+  }
+  
+  //On seeking a new position in stream.
+  //Show current position in stream, or Are we in range of an bit field this component edits.
+  
+  public void onSeek( IOEvent e )
+  {
+    System.out.println("Seek!");
+  }
+  
+  //On reading a new position in stream.
+  //Show current position in stream, or Are we in range of an bit field this component edits.
+  
+  public void onRead( IOEvent e )
+  {
+    System.out.println("Read!");
+  }
+  
+  //On writing a new position in stream.
+  //Have we updated a bit field this component edits.
+  
+  public void onWrite( IOEvent e )
+  {
+    System.out.println("Write!");
+  }
+
+}
+```
+The IO events are designed to be triggered for read, and writes that happen outside of your editing components.
+This allows you to design components that edit data and work together.
+
+If your component does a search in the IO stream you will want to disable events till done.
+First step set.
+IOStream.Events = false;
+Then after the search is done.
+IOStream.Events = true;
+Then call "IOStream.seek(pos);" to update the position and to trigger the seek event in all editors that are open with this file system.
