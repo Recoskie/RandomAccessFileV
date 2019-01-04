@@ -325,7 +325,7 @@ public class RandomAccessFileV extends RandomAccessFile
       {
         e = Map.get( n );
         
-        if( Address >= e.VPos && Address <= ( curVra.VPos + curVra.Len ) )
+        if( Address >= e.VPos && Address <= ( e.VPos + e.Len ) )
         {
           Index = n; curVra = e;
           
@@ -348,7 +348,7 @@ public class RandomAccessFileV extends RandomAccessFile
       {
         e = Map.get( n );
         
-        if( Address >= e.VPos && Address <= ( curVra.VPos + curVra.Len ) )
+        if( Address >= e.VPos && Address <= ( e.VPos + e.Len ) )
         {
           Index = n; curVra = e;
           
