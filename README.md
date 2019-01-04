@@ -134,6 +134,10 @@ public class MYCommponet extends JComponent implements IOEventListener
 
   public MYCommponet( RandomAccessFileV IO )
   {
+    //Reference to File system stream for use in this component.
+    
+    IOStream = IO;
+    
     //Add event listener to this component when edits, or changes are made in stream by other components.
     
     IO.addMyEventListener( this );
@@ -166,15 +170,17 @@ public class MYCommponet extends JComponent implements IOEventListener
 }
 ```
 
-The IO events are designed to be triggered for read, and writes that happen outside of your editing components.
-This allows you to design components that edit data and work together.
+The IO events are designed to be triggered for read, and writes that happen outside of your editing components.<br />
+This allows you to design components that edit data and work together.<br />
 
 # Disabling Events.
 
-If your component does a search in the IO stream you will want to disable events till done.
+If your component does a search in the IO stream you will want to disable events till done.<br />
 
-## First step set.
-**IOStream.Events = false;**
-Then after the search is done.
-**IOStream.Events = true;**
-Then call **IOStream.seek(pos);** to update the position and to trigger the seek event in all editors that are open with this file system.
+## First step set.<br/>
+**IOStream.Events = false;**<br/>
+Then after the search is done.<br />
+**IOStream.Events = true;**<br />
+Then call **IOStream.seek(pos);** to update the position and to trigger the seek event in all editors that are open with this file system.<br />
+<br />
+This is one example in which you would want to disable Events while doing IO. Then enable events when done.
