@@ -165,12 +165,16 @@ public class MYCommponet extends JComponent implements IOEventListener
 
 }
 ```
+
 The IO events are designed to be triggered for read, and writes that happen outside of your editing components.
 This allows you to design components that edit data and work together.
 
+# Disabling Events.
+
 If your component does a search in the IO stream you will want to disable events till done.
-First step set.
-IOStream.Events = false;
+
+## First step set.
+**IOStream.Events = false;**
 Then after the search is done.
-IOStream.Events = true;
-Then call "IOStream.seek(pos);" to update the position and to trigger the seek event in all editors that are open with this file system.
+**IOStream.Events = true;**
+Then call **IOStream.seek(pos);** to update the position and to trigger the seek event in all editors that are open with this file system.
