@@ -1,7 +1,66 @@
 import java.io.*;
+import java.util.*;
+import javax.swing.event.*;
+
+class IOEvent extends EventObject
+{
+  public int type = 0;
+  public int length = 0;
+  public int pos = 0;
+  
+  public IOEvent( Object source )
+  {
+    super( source );
+  }
+  
+  public IOEvent( Object source, int t )
+  {
+    super( source ); type = t;
+  }
+}
+
+interface IOEventListener extends EventListener
+{
+  public void onSeek( IOEvent evt );
+  public void onRead( IOEvent evt );
+  public void onWrite( IOEvent evt );
+}
 
 public class RandomAccessFileV extends RandomAccessFile
 {
+  //My event listener list for graphical components that listen for stream update events.
+  
+  protected EventListenerList list = new EventListenerList();
+  
+  //Disable events. This is to stop graphics components from updating while doing intensive operations.
+  
+  public boolean Events = true;
+
+  //Add and remove event listeners.
+
+  public void addMyEventListener( IOEventListener listener ) { list.add( IOEventListener.class, listener ); }
+  public void removeMyEventListener( IOEventListener listener ) { list.remove( IOEventListener.class, listener ); }
+  
+  //Fire the event to all my graphics components for editing the stream or decoding data types.
+  
+  void fireIOEvent ( IOEvent evt )
+  {
+    Object[] listeners = list.getListenerList();
+    
+    if ( Events )
+    {
+      for ( int i = 0; i < listeners.length; i = i + 2 )
+      {
+        if ( listeners[i] == IOEventListener.class )
+        {
+          if( evt.type == 0 ) { ((IOEventListener)listeners[i+1]).onSeek( evt ); }
+          else if( evt.type == 1 ) { ((IOEventListener)listeners[i+1]).onRead( evt ); }
+          else if( evt.type == 2 ) { ((IOEventListener)listeners[i+1]).onWrite( evt ); }
+        }
+      }
+    }
+  }
+  
   //64 bit address pointer. Used by things in virtual ram address space such as program instructions, and data.
   
   private long VAddress = 0x0000000000000000L;
@@ -227,19 +286,33 @@ public class RandomAccessFileV extends RandomAccessFile
     try { if( VAddress >= Add.VPos && VAddress <= Add.VEnd ) { seekV( VAddress ); } } catch( IOException ex ) {  }
   }
   
+  //fire seek event.
+  
+  public void seek( long Offset ) throws IOException
+  {
+    super.seek( Offset );
+    fireIOEvent( new IOEvent( this, 0 ) );
+  }
+  
+  //fire read event.
+  
+  public int read() throws IOException
+  {
+    fireIOEvent( new IOEvent( this, 1 ) );
+    return( super.read() );
+  }
+  
   //Adjust the Virtual offset pointer relative to the mapped virtual ram address and file pointer.
   
   public void seekV( long Address ) throws IOException
   {
     //If address is in range of current address index.
     
-    if( Address >= curVra.VPos && Address <= curVra.VEnd )
+    if( Address >= curVra.VPos && Address <= ( curVra.VPos + curVra.Len ) )
     {
       super.seek( ( Address - curVra.VPos ) + curVra.Pos );
       
       VAddress = Address - super.getFilePointer();
-      
-      return;
     }
     
     //If address is grater than the next vra iterate up in indexes.
@@ -252,7 +325,7 @@ public class RandomAccessFileV extends RandomAccessFile
       {
         e = Map.get( n );
         
-        if( Address >= e.VPos && Address <= e.VEnd )
+        if( Address >= e.VPos && Address <= ( curVra.VPos + curVra.Len ) )
         {
           Index = n; curVra = e;
           
@@ -275,7 +348,7 @@ public class RandomAccessFileV extends RandomAccessFile
       {
         e = Map.get( n );
         
-        if( Address >= e.VPos && Address <= e.VEnd )
+        if( Address >= e.VPos && Address <= ( curVra.VPos + curVra.Len ) )
         {
           Index = n; curVra = e;
           
@@ -287,6 +360,8 @@ public class RandomAccessFileV extends RandomAccessFile
         }
       }
     }
+    
+    VAddress = Address - super.getFilePointer(); fireIOEvent( new IOEvent( this, 0 ) );
   }
   
   public int readV() throws IOException
