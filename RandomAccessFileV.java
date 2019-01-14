@@ -2,22 +2,26 @@ import java.io.*;
 import java.util.*;
 import javax.swing.event.*;
 
+//Event constructor.
+
 class IOEvent extends EventObject
 {
-  public int type = 0;
-  public int length = 0;
-  public int pos = 0;
+  private long TPos = 0;
   
   public IOEvent( Object source )
   {
     super( source );
   }
   
-  public IOEvent( Object source, int t )
+  public IOEvent( Object source, long TPos )
   {
-    super( source ); type = t;
+    super( source ); this.TPos = TPos;
   }
+  
+  public long getTriggerPos(){ return( TPos ); }
 }
+
+//Basic IO Events.
 
 interface IOEventListener extends EventListener
 {
@@ -26,7 +30,7 @@ interface IOEventListener extends EventListener
   public void onWrite( IOEvent evt );
 }
 
-public class RandomAccessFileV extends RandomAccessFile
+public class RandomAccessFileV extends RandomAccessFile implements Runnable
 {
   //My event listener list for graphical components that listen for stream update events.
   
@@ -35,13 +39,66 @@ public class RandomAccessFileV extends RandomAccessFile
   //Disable events. This is to stop graphics components from updating while doing intensive operations.
   
   public boolean Events = true;
+  
+  //Trigger Position.
+  
+  private long TPos = 0;
+  
+  //Updated pos.
+  
+  private long pos = 0;
+  
+  //Running thread.
+  
+  private boolean Running = false;
+  
+  //When event is triggered.
+  
+  private boolean Trigger = false;
+  
+  //Read or write triggered.
+  
+  private boolean Read = false;
 
   //Add and remove event listeners.
 
-  public void addMyEventListener( IOEventListener listener ) { list.add( IOEventListener.class, listener ); }
-  public void removeMyEventListener( IOEventListener listener ) { list.remove( IOEventListener.class, listener ); }
+  public void addMyEventListener( IOEventListener listener )
+  {
+    //Event thread is created for sequential read, or write length.
+    
+    if( !Running ) { (new Thread(this)).start(); }
+    
+    list.add( IOEventListener.class, listener ); Events = true;
+  }
   
-  //Fire the event to all my graphics components for editing the stream or decoding data types.
+  public void removeMyEventListener( IOEventListener listener )
+  {
+    list.remove( IOEventListener.class, listener );
+    
+    //If all event listeners are removed. Disable event thread.
+    
+    Running = ( list.getListenerList().length > 0 ); Events = false;
+  }
+  
+  //Fire the event to all my graphics components, for editing the stream, or decoding data types.
+  
+  void fireIOEventSeek ( IOEvent evt )
+  {
+    Object[] listeners = list.getListenerList();
+    
+    if ( Events )
+    {
+      for ( int i = 0; i < listeners.length; i = i + 2 )
+      {
+        if ( listeners[i] == IOEventListener.class )
+        {
+          ((IOEventListener)listeners[i+1]).onSeek( evt );
+        }
+      }
+    }
+  }
+
+  //This is a delayed event to find the length of the data, for sequential read or write.
   
   void fireIOEvent ( IOEvent evt )
   {
@@ -53,9 +110,15 @@ public class RandomAccessFileV extends RandomAccessFile
       {
         if ( listeners[i] == IOEventListener.class )
         {
-          if( evt.type == 0 ) { ((IOEventListener)listeners[i+1]).onSeek( evt ); }
-          else if( evt.type == 1 ) { ((IOEventListener)listeners[i+1]).onRead( evt ); }
-          else if( evt.type == 2 ) { ((IOEventListener)listeners[i+1]).onWrite( evt ); }
+          if( Read )
+          {
+            ((IOEventListener)listeners[i+1]).onRead( evt );
+          }
+          
+          else
+          {
+            ((IOEventListener)listeners[i+1]).onWrite( evt );
+          }
         }
       }
     }
@@ -284,22 +347,6 @@ public class RandomAccessFileV extends RandomAccessFile
     //If added address lines up with Virtual address pointer. Seek the new address position.
     
     try { if( VAddress >= Add.VPos && VAddress <= Add.VEnd ) { seekV( VAddress ); } } catch( IOException ex ) {  }
-  }
-  
-  //fire seek event.
-  
-  public void seek( long Offset ) throws IOException
-  {
-    super.seek( Offset );
-    fireIOEvent( new IOEvent( this, 0 ) );
-  }
-  
-  //fire read event.
-  
-  public int read() throws IOException
-  {
-    fireIOEvent( new IOEvent( this, 1 ) );
-    return( super.read() );
   }
   
   //Adjust the Virtual offset pointer relative to the mapped virtual ram address and file pointer.
@@ -569,5 +616,86 @@ public class RandomAccessFileV extends RandomAccessFile
     for( int i = 0; i < MSize; s += Map.get( i++ ) + "\r\n" );
     
     System.out.println( s );
+  }
+  
+  //fire seek event.
+  
+  public void seek( long Offset ) throws IOException
+  {
+    super.seek( Offset ); fireIOEventSeek( new IOEvent( this ) );
+  }
+  
+  //Read and write events.
+  
+  @Override public int read() throws IOException
+  {
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
+    
+    return( super.read() );
+  }
+  
+  @Override public int read( byte[] b ) throws IOException
+  {
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
+    
+    return( super.read( b ) );
+  }
+  
+  @Override public int read( byte[] b, int off, int len ) throws IOException
+  {
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
+    
+    return( super.read( b, off, len ) );
+  }
+
+  
+  @Override public void write( int b ) throws IOException
+  {
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
+    
+    super.write( b );
+  }
+  
+  @Override public void write( byte[] b ) throws IOException
+  {
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
+    
+    super.write( b );
+  }
+  
+  @Override public void write( byte[] b, int off, int len ) throws IOException
+  {
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
+    
+    super.write( b, off, len );
+  }
+  
+  //Main Event thread.
+  
+  public void run()
+  {
+    try
+    {
+      if( !Running ) //Run once.
+      {
+        Running = true;
+        
+        while( Running )
+        {
+          //If read, or write is triggered.
+          
+          if( Trigger )
+          {
+            if( pos == super.getFilePointer() )
+            {
+              fireIOEvent( new IOEvent( this, TPos ) ); Trigger = false;
+            }
+            else{ pos = super.getFilePointer(); }
+          }
+          
+          Thread.sleep( 100 );
+        }
+      }
+    } catch( Exception e ) {}
   }
 }
