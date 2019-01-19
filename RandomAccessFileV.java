@@ -7,18 +7,20 @@ import javax.swing.event.*;
 class IOEvent extends EventObject
 {
   private long TPos = 0;
+  private long End = 0;
   
-  public IOEvent( Object source )
+  public IOEvent( Object source ) { super( source ); }
+  
+  public IOEvent( Object source, long TPos, long End )
   {
-    super( source );
+    super( source ); this.TPos = TPos; this.End = End;
   }
   
-  public IOEvent( Object source, long TPos )
-  {
-    super( source ); this.TPos = TPos;
-  }
+  public long SPos(){ return( TPos ); }
   
-  public long getTriggerPos(){ return( TPos ); }
+  public long EPos(){ return( End ); }
+  
+  public long length(){ return( End - TPos ); }
 }
 
 //Basic IO Events.
@@ -52,13 +54,17 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   private boolean Running = false;
   
-  //When event is triggered.
+  //Event trigger.
   
   private boolean Trigger = false;
   
-  //Read or write triggered.
+  //Read or write event.
   
   private boolean Read = false;
+  
+  //Main event thread.
+  
+  private Thread EventThread;
 
   //Add and remove event listeners.
 
@@ -66,7 +72,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   {
     //Event thread is created for sequential read, or write length.
     
-    if( !Running ) { (new Thread(this)).start(); }
+    if( !Running ) { EventThread = new Thread(this); EventThread.start(); }
     
     list.add( IOEventListener.class, listener ); Events = true;
   }
@@ -408,7 +414,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       }
     }
     
-    VAddress = Address - super.getFilePointer(); fireIOEvent( new IOEvent( this, 0 ) );
+    VAddress = Address - super.getFilePointer(); fireIOEvent( new IOEvent( this, VAddress, VAddress ) );
   }
   
   public int readV() throws IOException
@@ -607,6 +613,109 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     }
   }
   
+  //fire seek event.
+  
+  @Override public void seek( long Offset ) throws IOException
+  {
+    while( Events && Trigger ) { EventThread.interrupt(); }
+    
+    super.seek( Offset ); fireIOEventSeek( new IOEvent( this, Offset, Offset ) );
+  }
+  
+  //Seek. Same as seek, but is a little faster of a read ahread trick.
+  
+  @Override public int skipBytes( int n ) throws IOException
+  {
+    while( Events && Trigger ) { EventThread.interrupt(); }
+    
+    int b = super.skipBytes( n );
+    
+    fireIOEventSeek( new IOEvent( this, super.getFilePointer(), super.getFilePointer() ) );
+    
+    return( b );
+  }
+  
+  //Read and write events.
+  
+  @Override public int read() throws IOException
+  {
+    //Trigger writing event.
+    
+    while( Events && Trigger && !Read ) { EventThread.interrupt(); }
+    
+    //Start read event tracing.
+    
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
+    
+    return( super.read() );
+  }
+  
+  @Override public int read( byte[] b ) throws IOException
+  {
+    //Trigger writing event.
+    
+    while( Events && Trigger && !Read ) { EventThread.interrupt(); }
+    
+    //Start read event tracing.
+    
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
+    
+    return( super.read( b ) );
+  }
+  
+  @Override public int read( byte[] b, int off, int len ) throws IOException
+  {
+    //Trigger writing event.
+    
+    while( Events && Trigger && !Read ) { EventThread.interrupt(); }
+    
+    //Start read event tracing.
+    
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
+    
+    return( super.read( b, off, len ) );
+  }
+
+  
+  @Override public void write( int b ) throws IOException
+  {
+    //Trigger read event.
+    
+    while( Events && Trigger && Read ) { EventThread.interrupt(); }
+    
+    //Start write event tracing.
+    
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
+    
+    super.write( b );
+  }
+  
+  @Override public void write( byte[] b ) throws IOException
+  {
+    //Trigger read event.
+    
+    while( Events && Trigger && Read ) { EventThread.interrupt(); }
+    
+    //Start write event tracing.
+    
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
+    
+    super.write( b );
+  }
+  
+  @Override public void write( byte[] b, int off, int len ) throws IOException
+  {
+    //Trigger read event.
+    
+    while( Events && Trigger && Read ) { EventThread.interrupt(); }
+    
+    //Start write event tracing.
+    
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
+    
+    super.write( b, off, len );
+  }
+  
   //Debug The address mapped memory.
   
   public void Debug()
@@ -618,84 +727,35 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     System.out.println( s );
   }
   
-  //fire seek event.
-  
-  public void seek( long Offset ) throws IOException
-  {
-    super.seek( Offset ); fireIOEventSeek( new IOEvent( this ) );
-  }
-  
-  //Read and write events.
-  
-  @Override public int read() throws IOException
-  {
-    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
-    
-    return( super.read() );
-  }
-  
-  @Override public int read( byte[] b ) throws IOException
-  {
-    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
-    
-    return( super.read( b ) );
-  }
-  
-  @Override public int read( byte[] b, int off, int len ) throws IOException
-  {
-    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
-    
-    return( super.read( b, off, len ) );
-  }
-
-  
-  @Override public void write( int b ) throws IOException
-  {
-    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
-    
-    super.write( b );
-  }
-  
-  @Override public void write( byte[] b ) throws IOException
-  {
-    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
-    
-    super.write( b );
-  }
-  
-  @Override public void write( byte[] b, int off, int len ) throws IOException
-  {
-    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
-    
-    super.write( b, off, len );
-  }
-  
   //Main Event thread.
   
   public void run()
   {
-    try
+    if( !Running ) //Run once.
     {
-      if( !Running ) //Run once.
+      Running = true;
+      
+      while( Running )
       {
-        Running = true;
+        //If read, or write is triggered.
         
-        while( Running )
+        if( Trigger )
         {
-          //If read, or write is triggered.
-          
-          if( Trigger )
+          try
           {
             if( pos == super.getFilePointer() )
             {
-              fireIOEvent( new IOEvent( this, TPos ) ); Trigger = false;
+              fireIOEvent( new IOEvent( this, TPos, pos ) ); Trigger = false;
             }
             else{ pos = super.getFilePointer(); }
           }
-          
-          Thread.sleep( 100 );
+          catch( IOException e ) { e.printStackTrace(); }
         }
+        
+        //Fire event right away if interrupted, by a different IO event.
+        
+        try{ Thread.sleep( 100 ); } catch(InterruptedException e) { }
       }
-    } catch( Exception e ) {}
+    }
   }
 }
