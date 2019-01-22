@@ -140,7 +140,7 @@ public class MYCommponet extends JComponent implements IOEventListener
     
     //Add event listener to this component when edits, or changes are made in stream by other components.
     
-    IO.addMyEventListener( this );
+    IO.addIOEventListener( this );
   }
   
   //On seeking a new position in stream.
