@@ -68,7 +68,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
   //Add and remove event listeners.
 
-  public void addMyEventListener( IOEventListener listener )
+  public void addIOEventListener( IOEventListener listener )
   {
     //Event thread is created for sequential read, or write length.
     
@@ -77,7 +77,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     list.add( IOEventListener.class, listener ); Events = true;
   }
   
-  public void removeMyEventListener( IOEventListener listener )
+  public void removeIOEventListener( IOEventListener listener )
   {
     list.remove( IOEventListener.class, listener );
     
@@ -752,9 +752,9 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
           catch( IOException e ) { e.printStackTrace(); }
         }
         
-        //Fire event right away if interrupted, by a different IO event.
+        //Fire event right away if intruped, by a diffrent IO event.
         
-        try{ Thread.sleep( 100 ); } catch(InterruptedException e) { }
+        try{ Thread.sleep( 70 ); } catch(InterruptedException e) { }
       }
     }
   }
