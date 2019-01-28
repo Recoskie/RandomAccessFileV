@@ -1,3 +1,8 @@
+See release <a href="">V1.0</a>.<br /><br />
+New features are still in beta development.<br /><br />
+Event handling on seek, and multiple read/writes is a new feature.<br /><br />
+So far It is implemented for regular read/write, but not Virtual mapped space.
+
 # RandomAccessFileV
 
 Simulates a ram address space using very little ram Memory, and time on CPU.
