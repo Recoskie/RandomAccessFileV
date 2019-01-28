@@ -1,4 +1,4 @@
-See release <a href="">V1.0</a>.<br /><br />
+See release <a href="https://github.com/Recoskie/RandomAccessFileV/tree/V1.0">V1.0</a>.<br /><br />
 New features are still in beta development.<br /><br />
 Event handling on seek, and multiple read/writes is a new feature.<br /><br />
 So far It is implemented for regular read/write, but not Virtual mapped space.
