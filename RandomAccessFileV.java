@@ -294,10 +294,6 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     boolean sw = true;
     
-    //If grater than last address then add to end.
-    
-    if( MSize > 0 && Add.VPos > Map.get( MSize - 1 ).VEnd ){ Map.add( Add ); MSize++; return; }
-    
     //Else add and write in alignment.
     
     for( int i = 0; i < MSize; i++ )
@@ -448,7 +444,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     VAddress += 1; return( 0 );
   }
   
-  //Read len bytes from current virtual offset pointer.
+  //Read len bytes from current virtual offset pointer. Stop at udefined bytes.
   
   public int readV( byte[] b ) throws IOException
   {
@@ -463,15 +459,15 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     //Begin read operation.
 
     int Pos = 0, n = 0;
+
+    //Seek address if outside current address space.
+    
+    if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
     
     //Start reading.
     
     while( Pos < b.length )
     {
-      //Seek address if outside current address space.
-    
-      if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
-
       //Read in current offset.
       
       if( super.getFilePointer() >= curVra.Pos && super.getFilePointer() <= curVra.FEnd && curVra.Len > 0 )
@@ -482,22 +478,15 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         
         super.read( b, Pos, n ); Pos += n;
       }
-      
-      //Else 0 space. Skip n to Next address.
-      
       else
       {
-        n = (int)( ( curVra.VPos + curVra.Len ) - ( super.getFilePointer() - curVra.Pos ) );
+        //If next virtual address contains data. Continue reading.
         
-        if( n < 0 || curVra.Len <= 0 ) { n = b.length - Pos; }
-        
-        VAddress += n; Pos += n;
-        
-        seekV( getVirtualPointer() );
+        seekV( getVirtualPointer() ); if( curVra.Len <= 0 ){ return( Pos ); }
       }
     }
     
-    return( 0 );
+    return( Pos );
   }
   
   //Read len bytes at offset to len from current virtual offset pointer.
@@ -535,21 +524,34 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         super.read( b, Pos, n ); Pos += n;
       }
       
-      //Else 0 space. Skip n to Next address.
+      //Else stop at udefined space.
       
       else
       {
-        n = (int)( curVra.VLen - ( super.getFilePointer() - curVra.Pos ) );
-        
-        if( n < 0 || curVra.FEnd < 0  ) { n = len - Pos; }
-        
-        VAddress += n; Pos += n;
-        
-        seekV( getVirtualPointer() );
+        seekV( getVirtualPointer() ); if( curVra.Len <= 0 ){ return( Pos - off ); }
       }
     }
     
-    return( 0 );
+    return( Pos - off );
+  }
+
+  //Next Virtual adddress with data.
+
+  public long nextV()
+  {
+    VRA e = null;
+    
+    for( int n = Index + 1; n < MSize; n++ )
+    {
+      e = Map.get( n );
+      
+      if( e.Len > 0 && e.VLen > 0 )
+      {
+        return( e.VPos );
+      }
+    }
+
+    return( 0x7FFFFFFFFFFFFFFFL );
   }
   
   //Write an byte at Virtual address pointer if mapped.
