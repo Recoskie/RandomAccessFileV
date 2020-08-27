@@ -271,6 +271,8 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     Map.add( new VRA( 0, 0, 0, 0x7FFFFFFFFFFFFFFFL ) );
     
     MSize = 1; Index = -1; VAddress = 0;
+    
+    curVra = Map.get(0);
   }
   
   //Get the virtual address pointer. Relative to the File offset pointer.
@@ -359,9 +361,11 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   public void seekV( long Address ) throws IOException
   {
+    while( Events && Trigger ) { EventThread.interrupt(); }
+
     //If address is in range of current address index.
     
-    if( Address >= curVra.VPos && Address <= ( curVra.VPos + curVra.Len ) )
+    if( Address >= curVra.VPos && Address <= curVra.VEnd )
     {
       super.seek( ( Address - curVra.VPos ) + curVra.Pos );
       
@@ -378,7 +382,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       {
         e = Map.get( n );
         
-        if( Address >= e.VPos && Address <= ( e.VPos + e.Len ) )
+        if( Address >= e.VPos && Address <= e.VEnd )
         {
           Index = n; curVra = e;
           
@@ -401,7 +405,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       {
         e = Map.get( n );
         
-        if( Address >= e.VPos && Address <= ( e.VPos + e.Len ) )
+        if( Address >= e.VPos && Address <= e.VEnd )
         {
           Index = n; curVra = e;
           
@@ -414,11 +418,23 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       }
     }
     
-    VAddress = Address - super.getFilePointer(); fireIOEvent( new IOEvent( this, VAddress, VAddress ) );
+    VAddress = Address - super.getFilePointer();
+    
+    fireIOEventSeek( new IOEvent( this, VAddress, VAddress ) );
   }
   
   public int readV() throws IOException
   {
+    //Trigger writing event.
+    
+    while( Events && Trigger && !Read ) { EventThread.interrupt(); }
+    
+    //Start read event tracing.
+    
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
+
+    //Begin read operation.
+
     //Seek address if outside current address space.
     
     if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
@@ -436,16 +452,26 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   public int readV( byte[] b ) throws IOException
   {
+    //Trigger writing event.
+    
+    while( Events && Trigger && !Read ) { EventThread.interrupt(); }
+    
+    //Start read event tracing.
+    
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
+
+    //Begin read operation.
+
     int Pos = 0, n = 0;
-    
-    //Seek address if outside current address space.
-    
-    if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
     
     //Start reading.
     
     while( Pos < b.length )
     {
+      //Seek address if outside current address space.
+    
+      if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
+
       //Read in current offset.
       
       if( super.getFilePointer() >= curVra.Pos && super.getFilePointer() <= curVra.FEnd && curVra.Len > 0 )
@@ -463,7 +489,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       {
         n = (int)( ( curVra.VPos + curVra.Len ) - ( super.getFilePointer() - curVra.Pos ) );
         
-        if( n < 0 ) { n = b.length - Pos; }
+        if( n < 0 || curVra.Len <= 0 ) { n = b.length - Pos; }
         
         VAddress += n; Pos += n;
         
@@ -478,16 +504,26 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   public int readV( byte[] b, int off, int len ) throws IOException
   {
+    //Trigger writing event.
+    
+    while( Events && Trigger && !Read ) { EventThread.interrupt(); }
+    
+    //Start read event tracing.
+    
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
+
+    //Begin read operation.
+
     int Pos = off, n = 0; len += off;
-    
-    //Seek address if outside current address space.
-    
-    if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
     
     //Start reading.
     
     while( Pos < len )
     {
+      //Seek address if outside current address space.
+    
+      if( getVirtualPointer() >= curVra.VEnd ) { System.out.println("Seek!"); seekV( getVirtualPointer() ); }
+
       //Read in current offset.
       
       if( super.getFilePointer() >= curVra.Pos && super.getFilePointer() <= curVra.FEnd && curVra.Len > 0 )
@@ -505,7 +541,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       {
         n = (int)( curVra.VLen - ( super.getFilePointer() - curVra.Pos ) );
         
-        if( n < 0 ) { n = len - Pos; }
+        if( n < 0 || curVra.FEnd < 0  ) { n = len - Pos; }
         
         VAddress += n; Pos += n;
         
@@ -520,6 +556,16 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   public void writeV( int b ) throws IOException
   {
+    //Trigger read event.
+    
+    while( Events && Trigger && Read ) { EventThread.interrupt(); }
+    
+    //Start write event tracing.
+    
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
+
+    //begin writing.
+
     //Seek address if outside current address space.
     
     if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
@@ -537,6 +583,16 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   public void writeV( byte[] b ) throws IOException
   {
+    //Trigger read event.
+    
+    while( Events && Trigger && Read ) { EventThread.interrupt(); }
+    
+    //Start write event tracing.
+    
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
+
+    //begin writing.
+
     int Pos = 0, n = 0;
     
     //Seek address if outside current address space.
@@ -564,7 +620,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       {
         n = (int)( curVra.VLen - ( super.getFilePointer() - curVra.Pos ) );
         
-        if( n < 0 ) { n = b.length - Pos; }
+        if( n < 0 || curVra.Len <= 0 ) { n = b.length - Pos; }
         
         VAddress += n; Pos += n;
         
@@ -577,6 +633,16 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   public void writeV( byte[] b, int off, int len ) throws IOException
   {
+    //Trigger read event.
+    
+    while( Events && Trigger && Read ) { EventThread.interrupt(); }
+    
+    //Start write event tracing.
+    
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
+
+    //begin writing.
+
     int Pos = off, n = 0; len += off;
     
     //Seek address if outside current address space.
@@ -604,7 +670,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       {
         n = (int)( curVra.VLen - ( super.getFilePointer() - curVra.Pos ) );
         
-        if( n < 0 ) { n = len - Pos; }
+        if( n < 0 || curVra.Len <= 0 ) { n = len - Pos; }
         
         VAddress += n; Pos += n;
         
