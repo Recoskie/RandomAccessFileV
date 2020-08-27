@@ -416,7 +416,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     VAddress = Address - super.getFilePointer();
     
-    fireIOEventSeek( new IOEvent( this, VAddress, VAddress ) );
+    fireIOEventSeek( new IOEvent( this, super.getFilePointer(), getVirtualPointer() ) );
   }
   
   public int readV() throws IOException
@@ -687,7 +687,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   {
     while( Events && Trigger ) { EventThread.interrupt(); }
     
-    super.seek( Offset ); fireIOEventSeek( new IOEvent( this, Offset, Offset ) );
+    super.seek( Offset ); fireIOEventSeek( new IOEvent( this, Offset, getVirtualPointer() ) );
   }
   
   //Seek. Same as seek, but is a little faster of a read ahread trick.
@@ -698,7 +698,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     int b = super.skipBytes( n );
     
-    fireIOEventSeek( new IOEvent( this, super.getFilePointer(), super.getFilePointer() ) );
+    fireIOEventSeek( new IOEvent( this, super.getFilePointer(), getVirtualPointer() ) );
     
     return( b );
   }
