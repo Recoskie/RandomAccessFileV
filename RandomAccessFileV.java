@@ -6,21 +6,29 @@ import javax.swing.event.*;
 
 class IOEvent extends EventObject
 {
-  private long TPos = 0;
+  private long Pos = 0;
   private long End = 0;
+  private long PosV = 0;
+  private long EndV = 0;
   
   public IOEvent( Object source ) { super( source ); }
   
-  public IOEvent( Object source, long TPos, long End )
+  public IOEvent( Object source, long Pos, long End, long PosV, long EndV )
   {
-    super( source ); this.TPos = TPos; this.End = End;
+    super( source ); this.Pos = Pos; this.End = End; this.PosV = PosV; this.End = EndV;
   }
   
-  public long SPos(){ return( TPos ); }
+  public long SPos(){ return( Pos ); }
   
   public long EPos(){ return( End ); }
+
+  public long SPosV(){ return( PosV ); }
   
-  public long length(){ return( End - TPos ); }
+  public long EPosV(){ return( EndV ); }
+  
+  public long length(){ return( End - Pos ); }
+
+  public long lengthV(){ return( EndV - PosV ); }
 }
 
 //Basic IO Events.
@@ -40,15 +48,17 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   //Disable events. This is to stop graphics components from updating while doing intensive operations.
   
-  public boolean Events = true;
+  public boolean Events = false;
   
   //Trigger Position.
   
   private long TPos = 0;
+  private long TPosV = 0;
   
   //Updated pos.
   
   private long pos = 0;
+  private long posV = 0;
   
   //Running thread.
   
@@ -212,7 +222,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     public String toString()
     {
-      return( "File(Offset)=" + String.format( "%1$016X", Pos ) + "---FileEnd(Offset)=" + String.format( "%1$016X", FEnd ) + "---Start(Address)=" + String.format( "%1$016X", VPos ) + "---End(Address)=" + String.format( "%1$016X", VEnd ) + "---Length=" + VLen );
+      return( "File(Offset)=" + String.format( "%1$016X", Pos ) + "---FileEnd(Offset)=" + String.format( "%1$016X", FEnd ) + "---Start(Address)=" + String.format( "%1$016X", VPos ) + "---End(Address)=" + String.format( "%1$016X", VEnd ) + "---VLength=" + VLen + "---FLength=" + Len );
     }
   }
   
@@ -277,7 +287,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   //Get the virtual address pointer. Relative to the File offset pointer.
   
-  public long getVirtualPointer() throws IOException { return( super.getFilePointer() + VAddress ); }
+  public long getVirtualPointer() throws IOException { return( Math.max( Math.min( super.getFilePointer(), curVra.FEnd ), curVra.Pos ) + VAddress ); }
   
   //Add an virtual address.
   
@@ -416,7 +426,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     VAddress = Address - super.getFilePointer();
     
-    fireIOEventSeek( new IOEvent( this, super.getFilePointer(), getVirtualPointer() ) );
+    fireIOEventSeek( new IOEvent( this, super.getFilePointer(), 0, getVirtualPointer(), 0 ) );
   }
   
   public int readV() throws IOException
@@ -434,10 +444,14 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     //Seek address if outside current address space.
     
     if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
+
+    //Udefined byte.
+
+    if( curVra.Len <= 0 ) { VAddress += 1; return( -1 ); }
     
     //Read in current offset. If any data to be read.
     
-    if( super.getFilePointer() >= curVra.Pos && super.getFilePointer() <= curVra.FEnd ) { return( super.read() ); }
+    else if( super.getFilePointer() >= curVra.Pos && super.getFilePointer() <= curVra.FEnd ) { return( super.read() ); }
     
     //No data then 0 space.
     
@@ -454,7 +468,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     //Start read event tracing.
     
-    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); TPosV = getVirtualPointer(); Read = true; Trigger = true; }
 
     //Begin read operation.
 
@@ -463,12 +477,14 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     //Seek address if outside current address space.
     
     if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
+
+    if( curVra.Len <= 0 ){ return( -1 ); }
     
     //Start reading.
     
     while( Pos < b.length )
     {
-      //Read in current offset.
+      //Read in current file offset.
       
       if( super.getFilePointer() >= curVra.Pos && super.getFilePointer() <= curVra.FEnd && curVra.Len > 0 )
       {
@@ -478,11 +494,22 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         
         super.read( b, Pos, n ); Pos += n;
       }
+      
+      //Else stop at udefined space.
+      
       else
       {
-        //If next virtual address contains data. Continue reading.
+        //Zero space before the end of address.
+
+        n = (int)Math.min( curVra.VEnd - getVirtualPointer(), b.length - Pos ); VAddress += n;
+
+        for( int i = Pos + n; Pos < i; b[Pos++] = (byte)0x00 );
         
-        seekV( getVirtualPointer() ); if( curVra.Len <= 0 ){ return( Pos ); }
+        //If next virtual address contains data. Continue reading.
+
+        if( curVra.VEnd < getVirtualPointer() ) { seekV( getVirtualPointer() ); } else { return( Pos ); }
+
+        if( curVra.Len <= 0 ){ return( Pos ); }
       }
     }
     
@@ -499,20 +526,22 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     //Start read event tracing.
     
-    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = true; Trigger = true; }
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); TPosV = getVirtualPointer(); Read = true; Trigger = true; }
 
     //Begin read operation.
 
     int Pos = off, n = 0; len += off;
+
+    //Seek address if outside current address space.
+    
+    if( getVirtualPointer() >= curVra.VEnd ) { seekV( getVirtualPointer() ); }
+
+    if( curVra.Len <= 0 ){ return( -1 ); }
     
     //Start reading.
     
     while( Pos < len )
     {
-      //Seek address if outside current address space.
-    
-      if( getVirtualPointer() >= curVra.VEnd ) { System.out.println("Seek!"); seekV( getVirtualPointer() ); }
-
       //Read in current offset.
       
       if( super.getFilePointer() >= curVra.Pos && super.getFilePointer() <= curVra.FEnd && curVra.Len > 0 )
@@ -523,12 +552,22 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         
         super.read( b, Pos, n ); Pos += n;
       }
-      
+
       //Else stop at udefined space.
       
       else
       {
-        seekV( getVirtualPointer() ); if( curVra.Len <= 0 ){ return( Pos - off ); }
+        //Zero space before the end of address.
+
+        n = (int)Math.min( curVra.VEnd - getVirtualPointer(), b.length - Pos ); VAddress += n;
+
+        for( int i = Pos + n; Pos < i; b[Pos++] = (byte)0x00 );
+       
+        //If next virtual address contains data. Continue reading.
+
+        if( curVra.VEnd < getVirtualPointer() ) { seekV( getVirtualPointer() ); } else { return( Pos - off ); }
+
+        if( curVra.Len <= 0 ){ return( Pos - off ); }
       }
     }
     
@@ -591,7 +630,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     //Start write event tracing.
     
-    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); TPosV = getVirtualPointer(); Read = false; Trigger = true; }
 
     //begin writing.
 
@@ -641,7 +680,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     //Start write event tracing.
     
-    if( Events && !Trigger ) { TPos = super.getFilePointer(); Read = false; Trigger = true; }
+    if( Events && !Trigger ) { TPos = super.getFilePointer(); TPosV = getVirtualPointer(); Read = false; Trigger = true; }
 
     //begin writing.
 
@@ -687,7 +726,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   {
     while( Events && Trigger ) { EventThread.interrupt(); }
     
-    super.seek( Offset ); fireIOEventSeek( new IOEvent( this, Offset, getVirtualPointer() ) );
+    super.seek( Offset ); fireIOEventSeek( new IOEvent( this, Offset, 0, getVirtualPointer(), 0 ) );
   }
   
   //Seek. Same as seek, but is a little faster of a read ahread trick.
@@ -698,7 +737,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     int b = super.skipBytes( n );
     
-    fireIOEventSeek( new IOEvent( this, super.getFilePointer(), getVirtualPointer() ) );
+    fireIOEventSeek( new IOEvent( this, super.getFilePointer(), 0,  getVirtualPointer(), 0 ) );
     
     return( b );
   }
@@ -813,9 +852,9 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
           {
             if( pos == super.getFilePointer() )
             {
-              fireIOEvent( new IOEvent( this, TPos, pos ) ); Trigger = false;
+              fireIOEvent( new IOEvent( this, TPos, pos, TPosV, posV ) ); Trigger = false;
             }
-            else{ pos = super.getFilePointer(); }
+            else{ pos = super.getFilePointer(); posV = getVirtualPointer(); }
           }
           catch( IOException e ) { e.printStackTrace(); }
         }
