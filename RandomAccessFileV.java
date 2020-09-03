@@ -166,14 +166,9 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     {
       Pos = Offset; Len = DataLen; VPos = Address; VLen = AddressLen;
       
-      //Negative not allowed because of java's signified compare.
-      
-      if( Pos < 0 ) { Pos = 0; } if( VPos < 0 ) { VPos = 0; }
-      if( Len < 0 ) { Len = 0; } if( VLen < 0 ) { VLen = 0; }
-      
       //Data offset length can't be higher than virtual offset length.
       
-      if( Len > VLen ){ Len = VLen; }
+      if( Long.compareUnsigned( Len, VLen ) > 0 ){ Len = VLen; }
       
       //Calculate file offset end positions and virtual end positions.
       
@@ -244,9 +239,9 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   //Construct the reader using an file, or disk drive.
   
-  public RandomAccessFileV( File file, String mode ) throws FileNotFoundException { super( file, mode ); Map.add( new VRA( 0, 0, 0, 0x7FFFFFFFFFFFFFFFL ) ); curVra = Map.get(0); }
+  public RandomAccessFileV( File file, String mode ) throws FileNotFoundException { super( file, mode ); Map.add( new VRA( 0, 0, 0, 0xFFFFFFFFFFFFFFFFL ) ); curVra = Map.get(0); }
   
-  public RandomAccessFileV( String name, String mode ) throws FileNotFoundException { super( name, mode ); Map.add( new VRA( 0, 0, 0, 0x7FFFFFFFFFFFFFFFL ) ); curVra = Map.get(0); }
+  public RandomAccessFileV( String name, String mode ) throws FileNotFoundException { super( name, mode ); Map.add( new VRA( 0, 0, 0, 0xFFFFFFFFFFFFFFFFL ) ); curVra = Map.get(0); }
   
   //Temporary read only data.
   
@@ -278,7 +273,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   {
     Map.clear();
     
-    Map.add( new VRA( 0, 0, 0, 0x7FFFFFFFFFFFFFFFL ) );
+    Map.add( new VRA( 0, 0, 0, 0xFFFFFFFFFFFFFFFFL ) );
     
     MSize = 1; Index = -1; VAddress = 0;
     
@@ -312,7 +307,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       
       //If the added address writes to the end, or in the Middle of an address.
       
-      if( Add.VPos <= Cmp.VEnd && Add.VPos > Cmp.VPos && sw )
+      if( Long.compareUnsigned( Add.VPos, Cmp.VEnd ) <= 0 && Long.compareUnsigned( Add.VPos, Cmp.VPos ) > 0 && sw )
       {
         //Address range position.
         
@@ -320,7 +315,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         
         //If the added address does not write to the end of the address add it to the next element.
         
-        if( Cmp.VEnd > Add.VEnd )
+        if( Long.compareUnsigned( Cmp.VEnd, Add.VEnd ) > 0 )
         {
           sw = false; Map.add( e, new VRA( Cmp.Pos, Cmp.Len, Cmp.VPos, Cmp.VLen ) ); MSize++;
         }
@@ -332,7 +327,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       
       //If added Address writes to the start of Address.
       
-      else if( Add.VPos <= Cmp.VPos && Cmp.VPos <= Add.VEnd || !sw )
+      else if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) <= 0 && Long.compareUnsigned( Cmp.VPos, Add.VEnd ) >= 0 || !sw )
       {        
         //Address range position.
         
@@ -342,7 +337,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         
         Cmp.setStart( Add.VEnd + 1 );
         
-        //Remove overwritten addresses that are negative in length remaining.
+        //Remove overwritten addresses that are negative in length remaining. May have to rewrite this section now that I am treating long as unsigned.
         
         if( Cmp.VLen <= 0 ) { Map.remove( i ); i--; MSize--; }
         
@@ -360,7 +355,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     //If added address lines up with Virtual address pointer. Seek the new address position.
     
-    try { if( VAddress >= Add.VPos && VAddress <= Add.VEnd ) { seekV( VAddress ); } } catch( IOException ex ) {  }
+    try { if( Long.compareUnsigned( VAddress, Add.VPos ) >= 0 && Long.compareUnsigned( VAddress, Add.VEnd ) <= 0 ) { seekV( VAddress ); } } catch( IOException ex ) {  }
   }
   
   //Adjust the Virtual offset pointer relative to the mapped virtual ram address and file pointer.
@@ -371,7 +366,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
     //If address is in range of current address index.
     
-    if( Address >= curVra.VPos && Address <= curVra.VEnd )
+    if( Long.compareUnsigned( Address, curVra.VPos ) >= 0 && Long.compareUnsigned( Address, curVra.VEnd ) <= 0 )
     {
       super.seek( ( Address - curVra.VPos ) + curVra.Pos );
       
@@ -380,7 +375,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     //If address is grater than the next vra iterate up in indexes.
     
-    else if( Address >= curVra.VPos || Index == -1 )
+    else if( Long.compareUnsigned( Address, curVra.VPos ) >= 0 || Index == -1 )
     {
       VRA e = null;
       
@@ -388,7 +383,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       {
         e = Map.get( n );
         
-        if( Address >= e.VPos && Address <= e.VEnd )
+        if( Long.compareUnsigned( Address, e.VPos ) >= 0 && Long.compareUnsigned( Address, e.VEnd ) <= 0 )
         {
           Index = n; curVra = e;
           
@@ -403,7 +398,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     //else iterate down in indexes.
     
-    else if( Address <= curVra.VPos )
+    else if( Long.compareUnsigned( Address, curVra.VPos ) <= 0 )
     {
       VRA e = null;
       
@@ -411,7 +406,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       {
         e = Map.get( n );
         
-        if( Address >= e.VPos && Address <= e.VEnd )
+        if( Long.compareUnsigned( Address, e.VPos ) >= 0 && Long.compareUnsigned( Address, e.VEnd ) <= 0 )
         {
           Index = n; curVra = e;
           
@@ -443,9 +438,9 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
     //Seek address if outside current address space.
     
-    if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
+    if( Long.compareUnsigned( getVirtualPointer(), curVra.VEnd ) > 0 ) { seekV( getVirtualPointer() ); }
 
-    //Udefined byte.
+    //Undefined byte.
 
     if( curVra.Len <= 0 ) { VAddress += 1; return( -1 ); }
     
@@ -476,7 +471,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
     //Seek address if outside current address space.
     
-    if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
+    if( Long.compareUnsigned( getVirtualPointer(), curVra.VEnd ) > 0 ) { seekV( getVirtualPointer() ); }
 
     if( curVra.Len <= 0 ){ return( -1 ); }
     
@@ -495,7 +490,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         super.read( b, Pos, n ); Pos += n;
       }
       
-      //Else stop at udefined space.
+      //Else stop at undefined space.
       
       else
       {
@@ -507,7 +502,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         
         //If next virtual address contains data. Continue reading.
 
-        if( curVra.VEnd < getVirtualPointer() ) { seekV( getVirtualPointer() ); } else { return( Pos ); }
+        if( Long.compareUnsigned( curVra.VEnd, getVirtualPointer() ) < 0 ) { seekV( getVirtualPointer() ); } else { return( Pos ); }
 
         if( curVra.Len <= 0 ){ return( Pos ); }
       }
@@ -534,7 +529,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
     //Seek address if outside current address space.
     
-    if( getVirtualPointer() >= curVra.VEnd ) { seekV( getVirtualPointer() ); }
+    if( Long.compareUnsigned( getVirtualPointer(), curVra.VEnd ) >= 0 ) { seekV( getVirtualPointer() ); }
 
     if( curVra.Len <= 0 ){ return( -1 ); }
     
@@ -553,7 +548,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         super.read( b, Pos, n ); Pos += n;
       }
 
-      //Else stop at udefined space.
+      //Else stop at undefined space.
       
       else
       {
@@ -565,7 +560,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
        
         //If next virtual address contains data. Continue reading.
 
-        if( curVra.VEnd < getVirtualPointer() ) { seekV( getVirtualPointer() ); } else { return( Pos - off ); }
+        if( Long.compareUnsigned( curVra.VEnd, getVirtualPointer() ) < 0 ) { seekV( getVirtualPointer() ); } else { return( Pos - off ); }
 
         if( curVra.Len <= 0 ){ return( Pos - off ); }
       }
@@ -574,7 +569,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     return( Pos - off );
   }
 
-  //Next Virtual adddress with data.
+  //Next Virtual address with data.
 
   public long nextV()
   {
@@ -590,7 +585,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       }
     }
 
-    return( 0x7FFFFFFFFFFFFFFFL );
+    return( 0xFFFFFFFFFFFFFFFFL );
   }
   
   //Write an byte at Virtual address pointer if mapped.
@@ -609,7 +604,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
     //Seek address if outside current address space.
     
-    if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
+    if( Long.compareUnsigned( getVirtualPointer(), curVra.VEnd ) > 0 ) { seekV( getVirtualPointer() ); }
     
     //Write the byte if in range of address.
     
@@ -638,7 +633,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     //Seek address if outside current address space.
     
-    if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
+    if( Long.compareUnsigned( getVirtualPointer(), curVra.VEnd ) > 0 ) { seekV( getVirtualPointer() ); }
     
     //Start Writing.
     
@@ -688,7 +683,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     //Seek address if outside current address space.
     
-    if( getVirtualPointer() > curVra.VEnd ) { seekV( getVirtualPointer() ); }
+    if( Long.compareUnsigned( getVirtualPointer(), curVra.VEnd ) > 0 ) { seekV( getVirtualPointer() ); }
     
     //Start writing.
     
@@ -729,7 +724,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     super.seek( Offset ); fireIOEventSeek( new IOEvent( this, Offset, 0, getVirtualPointer(), 0 ) );
   }
   
-  //Seek. Same as seek, but is a little faster of a read ahread trick.
+  //Seek. Same as seek, but is a little faster of a read ahead trick.
   
   @Override public int skipBytes( int n ) throws IOException
   {
@@ -859,7 +854,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
           catch( IOException e ) { e.printStackTrace(); }
         }
         
-        //Fire event right away if intruped, by a diffrent IO event.
+        //Fire event right away if interrupted, by a different IO event.
         
         try{ Thread.sleep( 70 ); } catch(InterruptedException e) { }
       }
