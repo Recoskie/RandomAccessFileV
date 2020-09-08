@@ -555,9 +555,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         
         //If next virtual address contains data. Continue reading.
 
-        if( Long.compareUnsigned( curVra.VEnd, getVirtualPointer() ) < 0 ) { seekV( getVirtualPointer() ); } else { return( Pos ); }
-
-        if( curVra.Len <= 0 ){ return( Pos ); }
+        seekV( getVirtualPointer() ); if( curVra.Len <= 0 ) { return( Pos ); }
       }
     }
     
@@ -613,9 +611,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         
         //If next virtual address contains data. Continue reading.
 
-        if( Long.compareUnsigned( curVra.VEnd, getVirtualPointer() ) < 0 ) { seekV( getVirtualPointer() ); } else { return( Pos - off ); }
-
-        if( curVra.Len <= 0 ){ return( Pos - off ); }
+        seekV( getVirtualPointer() ); if( curVra.Len <= 0 ){ return( Pos - off ); }
       }
     }
     
