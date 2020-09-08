@@ -374,7 +374,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       
       //If added Address writes to the start of Address.
       
-      else if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) <= 0 && Long.compareUnsigned( Cmp.VPos, Add.VEnd ) >= 0 || !sw )
+      else if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) <= 0 && Long.compareUnsigned( Add.VEnd, Cmp.VPos ) >= 0 || !sw )
       {
         //Address range position.
         
