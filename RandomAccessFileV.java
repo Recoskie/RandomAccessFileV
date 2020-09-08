@@ -141,14 +141,17 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   }
   
   //64 bit address pointer. Used by things in virtual ram address space such as program instructions, and data.
+  //Note that Virtual address must be compared as unsigned.
   
   private long VAddress = 0x0000000000000000L;
   
   //Positions of an file can be mapped into ram address space locations.
+  //The file pointer can not address offsets as unsigned. So comparing file offsets as unsigned is not necessary.
 
   private class VRA
   {
     //General address map properties.
+    //Note that Pos, Len, and FEnd do not have to be compared as unsigned, however VPos, VLen, and VEnd need to be treated as unsigned.
     
     private long Pos = 0x0000000000000000L, Len = 0x0000000000000000L, VPos = 0x0000000000000000L, VLen = 0x0000000000000000L;
     
@@ -172,7 +175,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       
       //Calculate file offset end positions and virtual end positions.
       
-      FEnd = Pos + ( Len - 1 ); VEnd = VPos + ( VLen - 1 );
+      FEnd = Pos + (Len > 0 ? ( Len - 1 ) : 0); VEnd = VPos + ( VLen - 1 );
     }
     
     //Set the end of an address when another address writes into this address.
@@ -189,11 +192,11 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       
       //If there still is data after the added address.
       
-      Len = Math.min( Len, VLen ); 
+      Len = Long.compareUnsigned( Len, VLen ) < 0 ? Len : VLen; 
       
       //Calculate the bytes written into.
       
-      FEnd = Pos + ( Len - 1 );
+      FEnd = Pos + (Len > 0 ? ( Len - 1 ) : 0);
     }
     
     //Addresses that write over the start of an address.
@@ -201,7 +204,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     public void setStart( long Address )
     {
       //Add Data offset to bytes written over at start of address.
-        
+
       Pos += Address - VPos;
         
       //Move Virtual address start to end of address.
@@ -210,40 +213,53 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         
       //Recalculate length between the new end position.
         
-      Len = ( FEnd + 1 ) - Pos; VLen = ( VEnd + 1 ) - VPos;
+      Len = Pos > FEnd ? 0 : ( FEnd + 1 ) - Pos;
+      
+      if( Len == 0 ) { Pos = 0; }
+
+      VLen = Long.compareUnsigned( VPos, VEnd ) > 0 ? 0 : ( VEnd + 1 ) - VPos;
     }
     
     //String Representation for address space.
     
     public String toString()
     {
-      return( "File(Offset)=" + String.format( "%1$016X", Pos ) + "---FileEnd(Offset)=" + String.format( "%1$016X", FEnd ) + "---Start(Address)=" + String.format( "%1$016X", VPos ) + "---End(Address)=" + String.format( "%1$016X", VEnd ) + "---VLength=" + VLen + "---FLength=" + Len );
+      return( "-----------------------------------------------------------------------------------------------------------------------\r\n" +
+              "File(Offset)=" + String.format( "%1$016X", Pos ) + "---FileEnd(Offset)=" + String.format( "%1$016X", FEnd ) + "\r\n" + 
+              "Start(Address)=" + String.format( "%1$016X", VPos ) + "---End(Address)=" + String.format( "%1$016X", VEnd ) + "\r\n" +
+              "VLength=" + String.format( "%1$016X", VLen ) + "---FLength=" + String.format( "%1$016X", Len ) + "\r\n" + 
+              "-----------------------------------------------------------------------------------------------------------------------" );
     }
   }
   
   //The mapped addresses.
+  //Length zero is not address 0. Length 0 implies no data. Thus length is one byte less than the start address 0, and end position address.
+  //So to fix this. The address space is then split in half with two addresses 0x8000000000000000 in length.
   
-  private java.util.ArrayList<VRA> Map = new java.util.ArrayList<VRA>();
+  private java.util.ArrayList<VRA> Map = new java.util.ArrayList<VRA>(Arrays.asList(
+    new VRA( 0, 0, 0, 0x8000000000000000L ),
+    new VRA( 0, 0, 0x8000000000000000L, 0x8000000000000000L )
+  ));
   
   //The virtual address that the current virtual address pointer is in range of.
   
-  private VRA curVra;
+  public VRA curVra = new VRA( 0, 0, 0, 0x8000000000000000L );
   
   //Speeds up search. By going up or down from current virtual address.
   
-  private int Index = -1;
+  private int Index = 0;
   
   //Map.size() is slower than storing the mapped address space size.
   
-  private int MSize = 1;
+  private int MSize = 2;
   
   //Construct the reader using an file, or disk drive.
   
-  public RandomAccessFileV( File file, String mode ) throws FileNotFoundException { super( file, mode ); Map.add( new VRA( 0, 0, 0, 0xFFFFFFFFFFFFFFFFL ) ); curVra = Map.get(0); }
+  public RandomAccessFileV( File file, String mode ) throws FileNotFoundException { super( file, mode ); }
   
-  public RandomAccessFileV( String name, String mode ) throws FileNotFoundException { super( name, mode ); Map.add( new VRA( 0, 0, 0, 0xFFFFFFFFFFFFFFFFL ) ); curVra = Map.get(0); }
+  public RandomAccessFileV( String name, String mode ) throws FileNotFoundException { super( name, mode ); }
   
-  //Temporary read only data.
+  //Temporary data. This is so that components that are dependent on this file system can be used without a target file.
   
   private static File TFile;
   
@@ -253,7 +269,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   {
     super( mkf(), "r" ); super.write( data );
     
-    Map.add( new VRA( 0, data.length, 0, data.length ) ); curVra = Map.get(0);
+    addV( 0, data.length, 0, data.length );
     
     TFile.delete();
   }
@@ -262,7 +278,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   {
     super( mkf(), "r" ); super.write( data );
     
-    Map.add( new VRA( 0, (long)data.length, Address, (long)data.length ) ); curVra = Map.get(0);
+    addV( 0, (long)data.length, Address, (long)data.length );
     
     TFile.delete();
   }
@@ -273,17 +289,17 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   {
     Map.clear();
     
-    Map.add( new VRA( 0, 0, 0, 0xFFFFFFFFFFFFFFFFL ) );
+    Map.add( new VRA( 0, 0, 0, 0x8000000000000000L ) ); Map.add( new VRA( 0, 0, 0x8000000000000000L, 0x8000000000000000L ) );
     
-    MSize = 1; Index = -1; VAddress = 0;
+    MSize = 2; Index = 0; VAddress = 0;
     
     curVra = Map.get(0);
   }
   
   //Get the virtual address pointer. Relative to the File offset pointer.
   
-  public long getVirtualPointer() throws IOException { return( Math.max( Math.min( super.getFilePointer(), curVra.FEnd ), curVra.Pos ) + VAddress ); }
-  
+  public long getVirtualPointer() throws IOException { return( super.getFilePointer() + VAddress ); }
+
   //Add an virtual address.
   
   public void addV( long Offset, long DataLen, long Address, long AddressLen ) 
@@ -298,8 +314,39 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     //fixes lap over ERROR.
     
     boolean sw = true;
-    
-    //Else add and write in alignment.
+
+    //The address is split into two between the end, and start to follow regular sequential write.
+
+    if( Long.compareUnsigned( Add.VPos + Add.VLen, Add.VPos ) < 0 )
+    {
+      //Data before the end of address space.
+
+      long len = ( 0xFFFFFFFFFFFFFFFFL - Add.VPos ) + 1;
+
+      //Data in first address.
+
+      long len1 = Add.Len <= len ? Add.Len : len;
+
+      //Remaining Data in address 0 plus.
+
+      long len2 = Add.Len - len; len2 = len2 < 0 ? 0 : len2;
+
+      //Adjust address space.
+
+      Cmp = Map.get( MSize - 1 ); Cmp.setEnd( Add.VPos - 1 );
+
+      Map.add( MSize, new VRA( Add.Pos, len1, Add.VPos, len ) ); MSize += 1;
+
+      Cmp = Map.get( 0 ); Cmp.setStart( Add.VLen - len );
+      
+      Map.add( 0, new VRA( Add.Pos + len1, len2, 0, Add.VLen - len ) ); MSize += 1;
+
+      //return from method.
+
+      return;
+    }
+
+    //Write in alignment.
     
     for( int i = 0; i < MSize; i++ )
     {
@@ -328,7 +375,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       //If added Address writes to the start of Address.
       
       else if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) <= 0 && Long.compareUnsigned( Cmp.VPos, Add.VEnd ) >= 0 || !sw )
-      {        
+      {
         //Address range position.
         
         e = i;
@@ -339,7 +386,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         
         //Remove overwritten addresses that are negative in length remaining. May have to rewrite this section now that I am treating long as unsigned.
         
-        if( Cmp.VLen <= 0 ) { Map.remove( i ); i--; MSize--; }
+        if( Cmp.VLen == 0 ) { Map.remove( i ); i--; MSize--; }
         
         //Else if 0 or less data. Set data length and offset 0.
         
@@ -355,7 +402,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     //If added address lines up with Virtual address pointer. Seek the new address position.
     
-    try { if( Long.compareUnsigned( VAddress, Add.VPos ) >= 0 && Long.compareUnsigned( VAddress, Add.VEnd ) <= 0 ) { seekV( VAddress ); } } catch( IOException ex ) {  }
+    try { fireIOEventSeek( new IOEvent( this, super.getFilePointer(), 0, Add.VPos, 0 ) ); } catch( IOException ex ) {  }
   }
   
   //Adjust the Virtual offset pointer relative to the mapped virtual ram address and file pointer.
@@ -364,30 +411,36 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   {
     while( Events && Trigger ) { EventThread.interrupt(); }
 
+    long r = 0;
+
     //If address is in range of current address index.
     
     if( Long.compareUnsigned( Address, curVra.VPos ) >= 0 && Long.compareUnsigned( Address, curVra.VEnd ) <= 0 )
     {
-      super.seek( ( Address - curVra.VPos ) + curVra.Pos );
+      r = Address - curVra.VPos; if( Long.compareUnsigned( r, curVra.Len ) >= 0 ) { r = curVra.Len; }
+      
+      super.seek( r + curVra.Pos );
       
       VAddress = Address - super.getFilePointer();
     }
     
     //If address is grater than the next vra iterate up in indexes.
     
-    else if( Long.compareUnsigned( Address, curVra.VPos ) >= 0 || Index == -1 )
+    else if( Long.compareUnsigned( Address, curVra.VEnd ) >= 0 || Index == -1 )
     {
       VRA e = null;
       
       for( int n = Index + 1; n < MSize; n++ )
       {
         e = Map.get( n );
-        
+
         if( Long.compareUnsigned( Address, e.VPos ) >= 0 && Long.compareUnsigned( Address, e.VEnd ) <= 0 )
         {
           Index = n; curVra = e;
           
-          super.seek( ( Address - e.VPos ) + e.Pos );
+          r = Address - e.VPos; if( Long.compareUnsigned( r, e.Len ) >= 0 ) { r = e.Len; }
+          
+          super.seek( r + e.Pos );
           
           VAddress = Address - super.getFilePointer();
           
@@ -409,8 +462,10 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         if( Long.compareUnsigned( Address, e.VPos ) >= 0 && Long.compareUnsigned( Address, e.VEnd ) <= 0 )
         {
           Index = n; curVra = e;
+
+          r = Address - e.VPos; if( Long.compareUnsigned( r, e.Len ) >= 0 ) { r = e.Len; }
           
-          super.seek( ( Address - e.VPos ) + e.Pos );
+          super.seek( r + e.Pos );
           
           VAddress = Address - super.getFilePointer();
           
@@ -418,8 +473,6 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         }
       }
     }
-    
-    VAddress = Address - super.getFilePointer();
     
     fireIOEventSeek( new IOEvent( this, super.getFilePointer(), 0, getVirtualPointer(), 0 ) );
   }
@@ -453,7 +506,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     VAddress += 1; return( 0 );
   }
   
-  //Read len bytes from current virtual offset pointer. Stop at udefined bytes.
+  //Read len bytes from current virtual offset pointer. Stop at undefined bytes.
   
   public int readV( byte[] b ) throws IOException
   {
@@ -496,7 +549,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       {
         //Zero space before the end of address.
 
-        n = (int)Math.min( curVra.VEnd - getVirtualPointer(), b.length - Pos ); VAddress += n;
+        n = (int)Math.min( ( curVra.VEnd - getVirtualPointer() ) + 1, b.length - Pos ); VAddress += n;
 
         for( int i = Pos + n; Pos < i; b[Pos++] = (byte)0x00 );
         
@@ -554,10 +607,10 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       {
         //Zero space before the end of address.
 
-        n = (int)Math.min( curVra.VEnd - getVirtualPointer(), b.length - Pos ); VAddress += n;
+        n = (int)Math.min( ( curVra.VEnd - getVirtualPointer() ) + 1, b.length - Pos ); VAddress += n;
 
         for( int i = Pos + n; Pos < i; b[Pos++] = (byte)0x00 );
-       
+        
         //If next virtual address contains data. Continue reading.
 
         if( Long.compareUnsigned( curVra.VEnd, getVirtualPointer() ) < 0 ) { seekV( getVirtualPointer() ); } else { return( Pos - off ); }
@@ -571,21 +624,15 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
   //Next Virtual address with data.
 
-  public long nextV()
+  public long endV()
   {
-    VRA e = null;
-    
-    for( int n = Index + 1; n < MSize; n++ )
+    try
     {
-      e = Map.get( n );
-      
-      if( e.Len > 0 && e.VLen > 0 )
-      {
-        return( e.VPos );
-      }
+      return( ( Map.get( Index ).VEnd - getVirtualPointer() ) + 1 );
     }
+    catch( Exception e ) { }
 
-    return( 0xFFFFFFFFFFFFFFFFL );
+    return( 0 );
   }
   
   //Write an byte at Virtual address pointer if mapped.
