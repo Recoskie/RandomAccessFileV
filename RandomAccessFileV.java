@@ -346,12 +346,12 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
       if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) <= 0 && Long.compareUnsigned( Add.VEnd, Cmp.VEnd ) >= 0 )
       {
-        Map.remove( i-- ); Cmp = Map.get( i ); MSize--; 
+        Map.remove( i ); i -= 1; MSize -= 1;
       }
       
       //If the added address writes to the end, or in the Middle of an address.
       
-      if( Long.compareUnsigned( Add.VPos, Cmp.VEnd ) <= 0 && Long.compareUnsigned( Add.VPos, Cmp.VPos ) > 0 && sw )
+      else if( Long.compareUnsigned( Add.VPos, Cmp.VEnd ) <= 0 && Long.compareUnsigned( Add.VPos, Cmp.VPos ) > 0 && sw )
       {
         //Address range position.
         
