@@ -876,7 +876,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
           {
             if( pos == super.getFilePointer() )
             {
-              fireIOEvent( new IOEvent( this, TPos, pos, TPosV, posV ) ); Trigger = false;
+              fireIOEvent( new IOEvent( this, TPos, pos - 1, TPosV, posV - 1 ) ); Trigger = false;
             }
             else{ pos = super.getFilePointer(); posV = getVirtualPointer(); }
           }
