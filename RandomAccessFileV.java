@@ -403,7 +403,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     {
       r = Address - curVra.VPos; if( Long.compareUnsigned( r, curVra.Len ) >= 0 ) { r = curVra.Len; }
       
-      super.seek( r + curVra.Pos );
+      if( curVra.Len > 0 ) { super.seek( r + curVra.Pos ); }
       
       VAddress = Address - super.getFilePointer();
     }
@@ -424,7 +424,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
           r = Address - e.VPos; if( Long.compareUnsigned( r, e.Len ) >= 0 ) { r = e.Len; }
           
-          super.seek( r + e.Pos );
+          if( curVra.Len > 0 ) { super.seek( r + e.Pos ); }
           
           VAddress = Address - super.getFilePointer();
           
@@ -449,7 +449,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
           r = Address - e.VPos; if( Long.compareUnsigned( r, e.Len ) >= 0 ) { r = e.Len; }
           
-          super.seek( r + e.Pos );
+          if( curVra.Len > 0 ) { super.seek( r + e.Pos ); }
           
           VAddress = Address - super.getFilePointer();
           
