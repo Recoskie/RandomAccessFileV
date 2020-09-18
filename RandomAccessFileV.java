@@ -15,7 +15,7 @@ class IOEvent extends EventObject
   
   public IOEvent( Object source, long Pos, long End, long PosV, long EndV )
   {
-    super( source ); this.Pos = Pos; this.End = End; this.PosV = PosV; this.End = EndV;
+    super( source ); this.Pos = Pos; this.End = End; this.PosV = PosV; this.EndV = EndV;
   }
   
   public long SPos(){ return( Pos ); }
