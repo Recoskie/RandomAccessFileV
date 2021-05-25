@@ -707,7 +707,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
   //New write method writes stored bytes.
   
-  public void writeV( int len, int off ) throws IOException { syncWV(); writeV( d, off, len );  } 
+  public void writeV( int off, int len ) throws IOException { syncWV(); writeV( d, off, len );  } 
   
   //fire seek event.
   
