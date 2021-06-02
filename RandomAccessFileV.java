@@ -144,7 +144,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
     //If this address has mapped space.
 
-    private boolean Maped = false;
+    private boolean Mapped = false;
     
     //Construct area map. Both long/int size. Note End position can match the start position as the same byte. End position is minus 1.
     
@@ -162,7 +162,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
       //Set mapped.
 
-      Maped = Len != 0;
+      Mapped = Len != 0;
     }
     
     //Set the end of an address when another address writes into this address.
@@ -187,7 +187,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
       //Set mapped.
 
-      Maped = Len != 0;
+      Mapped = Len != 0;
     }
     
     //Addresses that write over the start of an address.
@@ -212,7 +212,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
       //Set mapped.
 
-      Maped = Len != 0;
+      Mapped = Len != 0;
     }
     
     //String Representation for address space.
@@ -278,15 +278,15 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     TFile.delete();
   }
 
-  //Check if position is maped.
+  //Check if position is mapped.
 
   public boolean isMaped()
   {
-    if( curVra.Maped )
+    if( curVra.Mapped )
     {
       Events = false; try { seekV(getVirtualPointer()); } catch( IOException e ) { } Events = true;
 
-      return( curVra.Maped );
+      return( curVra.Mapped );
     }
 
     return( false );
@@ -392,6 +392,19 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         Cmp.setStart( Add.VEnd + 1 ); sw = true;
       }
     }
+
+    //If address is in range of current address index.
+
+    try
+    {
+      if( Long.compareUnsigned( getVirtualPointer(), Add.VPos ) >= 0 && Long.compareUnsigned( getVirtualPointer(), Add.VEnd ) <= 0 )
+      {
+        Address = getVirtualPointer() - Add.VPos; if( Long.compareUnsigned( Address, Add.Len ) <= 0 )
+        {
+          super.seek( Address + Add.Pos ); VAddress = Address - super.getFilePointer(); Index = e; curVra = Add;
+        }
+      }
+    } catch(IOException er) {}
     
     //Add address in order to it's position in range.
     
@@ -470,7 +483,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         }
       }
     }
-    
+
     fireIOEventSeek( new IOEvent( this, super.getFilePointer(), 0, getVirtualPointer(), 0, TriggerV ) );
   }
   
@@ -563,7 +576,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       {
         //Number of bytes that can be read from current area.
         
-        n = (int)Math.min( ( curVra.FEnd + 1 ) - super.getFilePointer(), len );
+        n = (int)Math.min( ( curVra.FEnd + 1 ) - super.getFilePointer(), len - off);
         
         super.read( b, Pos, n ); Pos += n;
       }
