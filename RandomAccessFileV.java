@@ -3,7 +3,6 @@ import java.io.*;
 import java.util.*;
 import java.nio.charset.StandardCharsets;
 
-import javax.swing.JOptionPane;
 import javax.swing.event.*;
 
 public class RandomAccessFileV extends RandomAccessFile implements Runnable
@@ -392,23 +391,10 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         Cmp.setStart( Add.VEnd + 1 ); sw = true;
       }
     }
-
-    //If address is in range of current address index.
-
-    try
-    {
-      if( Long.compareUnsigned( getVirtualPointer(), Add.VPos ) >= 0 && Long.compareUnsigned( getVirtualPointer(), Add.VEnd ) <= 0 )
-      {
-        Address = getVirtualPointer() - Add.VPos; if( Long.compareUnsigned( Address, Add.Len ) <= 0 )
-        {
-          super.seek( Address + Add.Pos ); VAddress = Address - super.getFilePointer(); Index = e; curVra = Add;
-        }
-      }
-    } catch(IOException er) {}
     
     //Add address in order to it's position in range.
     
-    Map.add( e, Add ); MSize++;
+    Index = e; curVra = Add; Map.add( e, Add ); MSize++;
   }
   
   //Adjust the Virtual offset pointer relative to the mapped virtual ram address and file pointer.
