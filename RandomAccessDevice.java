@@ -68,6 +68,11 @@ public class RandomAccessDevice extends RandomAccessFileV
 
   //Read data at any position in sectors as a regular Random access file.
   
+  @Override public int readV() throws IOException
+  {
+    return( this.read() );
+  }
+
   @Override public int read() throws IOException
   {
     //Disable event during operation.
@@ -85,6 +90,11 @@ public class RandomAccessDevice extends RandomAccessFileV
     //Restore event state.
     
     super.Events = e; return( r );
+  }
+
+  @Override public int readV( byte[] b ) throws IOException
+  {
+    return( this.read( b ) );
   }
 
   @Override public int read( byte[] b ) throws IOException
@@ -134,6 +144,11 @@ public class RandomAccessDevice extends RandomAccessFileV
     //Restore event state.
 
     super.Events = e; return( r );
+  }
+
+  @Override public int readV( byte[] b, int off, int len ) throws IOException
+  {
+    return( this.read( b, off, len ) );
   }
   
   @Override public int read( byte[] b, int off, int len ) throws IOException
