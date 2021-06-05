@@ -66,6 +66,11 @@ public class RandomAccessDevice extends RandomAccessFileV
     if( !end ) { throw( new IOException("Disk Error!") ); } else { super.seek(0); super.Events = true; }
   }
 
+  @Override public void seekV( long pos ) throws IOException
+  {
+    this.seek( pos );
+  }
+
   //Read data at any position in sectors as a regular Random access file.
   
   @Override public int readV() throws IOException
