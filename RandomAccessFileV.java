@@ -312,6 +312,8 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   public void addV( long Offset, long DataLen, long Address, long AddressLen ) 
   {
+    if( Offset == 0 && DataLen == 0 && Address == 0 && AddressLen == 0 ){ return; } //Bad Input.
+
     VRA Add = new VRA( Offset, DataLen, Address, AddressLen );
     VRA Cmp = null;
     
@@ -357,44 +359,50 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         Map.remove( i ); i -= 1; MSize -= 1;
       }
       
-      //If the added address writes to the end, or in the Middle of an address.
+      //If the added address writes before the address, or in the Middle of an address.
       
-      else if( Long.compareUnsigned( Add.VPos, Cmp.VEnd ) <= 0 && Long.compareUnsigned( Add.VPos, Cmp.VPos ) > 0 && sw )
+      else if(
+        Long.compareUnsigned( Add.VPos, Cmp.VEnd ) <= 0 //Can not possibility hit into address if starts after address.
+        &&
+        Long.compareUnsigned( Add.VEnd, Cmp.VPos ) >= 0 //The end position must be past start of the address.
+      )
       {
-        //Address range position.
+        //Writes to start of compared address.
         
-        e = i + 1;
-        
-        //If the added address does not write to the end of the address then add it to the next element.
-        //Set sw. So the end start position can be adjusted on split address.
-        
-        if( Long.compareUnsigned( Cmp.VEnd, Add.VEnd ) > 0 )
-        {
-          sw = false; Map.add( e, new VRA( Cmp.Pos, Cmp.Len, Cmp.VPos, Cmp.VLen ) ); MSize++;
+        if( Long.compareUnsigned( Add.VEnd, Cmp.VEnd ) < 0 )
+        { 
+          if( ( Long.compareUnsigned( Add.VPos, Cmp.VPos ) > 0 ) )
+          {
+            VRA t = new VRA( Cmp.Pos, Cmp.Len, Cmp.VPos, Cmp.VLen ); t.setEnd( Add.VPos - 1 );
+
+            Map.add(i,t); MSize += 1;
+          }
+
+          Cmp.setStart( Add.VEnd + 1 );
         }
+
+        //Writes to End of compared address.
         
-        //Set end of the current address to the start of added address.
-        
-        Cmp.setEnd( Add.VPos - 1 );
-      }
-      
-      //If added Address writes to the start of Address.
-      
-      else if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) <= 0 && Long.compareUnsigned( Add.VEnd, Cmp.VPos ) >= 0 || !sw )
-      {
-        //Address range position.
-        
-        e = i;
-        
-        //Add Data offset to bytes written over at start of address.
-        
-        Cmp.setStart( Add.VEnd + 1 ); sw = true;
+        if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) > 0 )
+        { 
+          Cmp.setEnd( Add.VPos - 1 ); e = i;
+        }
       }
     }
+
+    for( int i = 0; i < MSize; i++ )
+    {
+      Cmp = Map.get( i );
+
+      if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) < 0 )
+      { 
+        e = i; break;
+      }
+    }
+
+    MSize += 1; Index = e; curVra = Add;
     
-    //Add address in order to it's position in range.
-    
-    Index = e; curVra = Add; Map.add( e, Add ); MSize++;
+    Map.add( e, Add );
   }
   
   //Adjust the Virtual offset pointer relative to the mapped virtual ram address and file pointer.
