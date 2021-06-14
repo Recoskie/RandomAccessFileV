@@ -320,12 +320,8 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     //The numerical range the address lines up to in index in the address map.
     
     int e = 0;
-    
-    //fixes lap over ERROR. When splitting an address.
-    
-    boolean sw = true;
 
-    //The address is split into two between the end, and start to follow regular sequential write.
+    //The address is split into two between the end, and start to follow regular sequential read/write.
 
     if( Long.compareUnsigned( Add.VPos + ( Add.VLen - 1 ), Add.VPos ) < 0 )
     {
@@ -353,13 +349,14 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       Cmp = Map.get( i );
 
       //Remove any address that is overwritten.
+      //The address starts at the start of an address, or before, and ends past the address. 
 
       if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) <= 0 && Long.compareUnsigned( Add.VEnd, Cmp.VEnd ) >= 0 )
       {
-        Map.remove( i ); i -= 1; MSize -= 1;
+        Map.remove( i ); e = i; i -= 1; MSize -= 1;
       }
       
-      //If the added address writes before the address, or in the Middle of an address.
+      //If the added address writes to address, but does not write over it fully.
       
       else if(
         Long.compareUnsigned( Add.VPos, Cmp.VEnd ) <= 0 //Can not possibility hit into address if starts after address.
@@ -367,42 +364,43 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
         Long.compareUnsigned( Add.VEnd, Cmp.VPos ) >= 0 //The end position must be past start of the address.
       )
       {
-        //Writes to start of compared address.
+        e = i;
         
+        //Does not write past the end of the address.
+
         if( Long.compareUnsigned( Add.VEnd, Cmp.VEnd ) < 0 )
-        { 
+        {
+          //If does not write to start of address.
+          //We add a new address with the remaining data before our added address.
+
           if( ( Long.compareUnsigned( Add.VPos, Cmp.VPos ) > 0 ) )
           {
             VRA t = new VRA( Cmp.Pos, Cmp.Len, Cmp.VPos, Cmp.VLen ); t.setEnd( Add.VPos - 1 );
 
-            Map.add(i,t); MSize += 1;
+            Map.add(i,t); MSize += 1; e = i + 1;
           }
+
+          //Obviously does not write past the compared address.
+          //So we set the stating byte to the end of our added address.
 
           Cmp.setStart( Add.VEnd + 1 );
         }
 
         //Writes to End of compared address.
+        //We then make the address length shorter. To allow our added address to start after it.
         
         if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) > 0 )
         { 
-          Cmp.setEnd( Add.VPos - 1 ); e = i;
+          Cmp.setEnd( Add.VPos - 1 ); e = i + 1;
         }
       }
     }
 
-    for( int i = 0; i < MSize; i++ )
-    {
-      Cmp = Map.get( i );
+    Index = e; curVra = Add;
 
-      if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) < 0 )
-      { 
-        e = i; break;
-      }
-    }
-
-    MSize += 1; Index = e; curVra = Add;
+    //We palace the address in it's proper position after adjusting the address space.
     
-    Map.add( e, Add );
+    Map.add( e, Add ); MSize += 1;
   }
   
   //Adjust the Virtual offset pointer relative to the mapped virtual ram address and file pointer.
