@@ -312,7 +312,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   public void addV( long Offset, long DataLen, long Address, long AddressLen ) 
   {
-    if( Offset == 0 && DataLen == 0 && Address == 0 && AddressLen == 0 ){ return; } //Bad Input.
+    if( AddressLen == 0 ){ return; } //Bad Input.
 
     VRA Add = new VRA( Offset, DataLen, Address, AddressLen );
     VRA Cmp = null;
@@ -348,8 +348,8 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     {
       Cmp = Map.get( i );
 
-      //Remove any address that is overwritten.
-      //The address starts at the start of an address, or before, and ends past the address. 
+      //Remove any mapped address that is overwritten.
+      //The added address starts at, or before an address, and ends at, or past the address. 
 
       if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) <= 0 && Long.compareUnsigned( Add.VEnd, Cmp.VEnd ) >= 0 )
       {
@@ -357,12 +357,9 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       }
       
       //If the added address writes to address, but does not write over it fully.
+      //The Added address position is at, or before the end of an address, and ends after, or at the start address of an address. 
       
-      else if(
-        Long.compareUnsigned( Add.VPos, Cmp.VEnd ) <= 0 //Can not possibility hit into address if starts after address.
-        &&
-        Long.compareUnsigned( Add.VEnd, Cmp.VPos ) >= 0 //The end position must be past start of the address.
-      )
+      else if( Long.compareUnsigned( Add.VPos, Cmp.VEnd ) <= 0 && Long.compareUnsigned( Add.VEnd, Cmp.VPos ) >= 0 )
       {
         e = i;
         
@@ -380,13 +377,12 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
             Map.add(i,t); MSize += 1; e = i + 1;
           }
 
-          //Obviously does not write past the compared address.
-          //So we set the stating byte to the end of our added address.
+          //Does not write past the compared address. So we set the stating byte to the end of our added address.
 
           Cmp.setStart( Add.VEnd + 1 );
         }
 
-        //Writes to End of compared address.
+        //Writes to End, or past the compared address.
         //We then make the address length shorter. To allow our added address to start after it.
         
         if( Long.compareUnsigned( Add.VPos, Cmp.VPos ) > 0 )
