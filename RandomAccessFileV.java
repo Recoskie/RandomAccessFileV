@@ -518,7 +518,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
       {
         //Number of bytes that can be read from current area.
         
-        n = (int)Math.min( ( curVra.FEnd + 1 ) - super.getFilePointer(), b.length );
+        n = (int)Math.min( ( curVra.FEnd + 1 ) - super.getFilePointer(), b.length - Pos );
         
         super.read( b, Pos, n ); Pos += n;
       }
