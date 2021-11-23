@@ -37,9 +37,13 @@ public class RandomAccessDevice extends RandomAccessFileV
 
   private long size = 0;
 
+  //Path to disk.
+
+  private String path = "";
+
   public RandomAccessDevice( File file, String mode ) throws FileNotFoundException
   {
-    super( file, mode );
+    super( file, mode ); path = file.getPath();
     
     //Sector size.
 
@@ -48,7 +52,7 @@ public class RandomAccessDevice extends RandomAccessFileV
   
   public RandomAccessDevice( String name, String mode ) throws FileNotFoundException
   {
-    super( name, mode );
+    super( name, mode ); path = name;
 
     //Sector size.
 
@@ -213,7 +217,22 @@ public class RandomAccessDevice extends RandomAccessFileV
     {
       super.Events = false; try { TempPos = super.getFilePointer(); } catch( IOException e ) { }
 
-      //Calculate the length of a raw disk volume.
+      try
+      {
+        //MacOS
+
+        if( path.indexOf( "/dev/r" ) >= 0 )
+        {
+          Process p = new ProcessBuilder(new String[] { "/bin/bash", "-c", "diskutil info " + path + " | grep \"Disk Size\"" }).start();
+
+          String s = new BufferedReader( new InputStreamReader( p.getInputStream() ) ).readLine();
+
+          return( Long.parseUnsignedLong( s.substring( s.indexOf("(") + 1, s.indexOf(" Bytes)") ), 10 ) );
+        }
+      }
+      catch( Exception e ) { }
+
+      //Fail to query disk size information then calculate the length of a raw disk volume.
 
       long bit = sector.length; boolean end = false;
     
