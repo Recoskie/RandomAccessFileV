@@ -219,6 +219,28 @@ public class RandomAccessDevice extends RandomAccessFileV
 
       try
       {
+        //Windows reports disks a few sectors less than they should be.
+        //This gets us as close as possible to the actual size without having to scan the disk fully.
+
+        if( path.indexOf("\\\\.\\") >= 0 )
+        {
+          String index = path.substring( 17, path.length() );
+
+          Process p = new ProcessBuilder(new String[] { "cmd", "/c", "wmic diskdrive GET index,size /format:table" }).start();
+
+          InputStream b = p.getInputStream(); String[] s = new String( b.readAllBytes() ).split("\r\r\n");
+
+          int sep = s[0].indexOf("Size"); for( int i = 0; i < s.length; i++ )
+          {
+            if( s[i].startsWith(index) )
+            {
+              size = Long.parseUnsignedLong(s[i].substring( sep ).replaceAll(" ", ""), 10 ) + 5102 * sector.length;
+
+              super.seek( size + sector.length ); super.read( sector );
+            }
+          }
+        }
+
         //MacOS
 
         if( path.indexOf( "/dev/r" ) >= 0 )
@@ -230,13 +252,22 @@ public class RandomAccessDevice extends RandomAccessFileV
           return( Long.parseUnsignedLong( s.substring( s.indexOf("(") + 1, s.indexOf(" Bytes)") ), 10 ) );
         }
       }
-      catch( Exception e ) { }
+      catch( IOException e )
+      {
+        //Determines the last sector was found in windows.
+
+        if( size != 0 ) { try { super.seek( size ); super.read( sector ); return( size + sector.length - 1 ); } catch( IOException er ) { } }
+      }
 
       //Fail to query disk size information then calculate the length of a raw disk volume.
 
       long bit = sector.length; boolean end = false;
     
-      end = false; while( bit <= 0x4000000000000000L && !end ) { try { super.seek( bit <<= 1 ); super.read( sector ); } catch( IOException e ) { bit >>= 1; size |= bit; end = true; } }
+      if( size == 0 ) { end = false; while( bit <= 0x4000000000000000L && !end ) { try { super.seek( bit <<= 1 ); super.read( sector ); } catch( IOException e ) { bit >>= 1; size |= bit; end = true; } } }
+      else
+      {
+        bit = 1L << ( (int)( Math.log( size ) / Math.log(2) ) ); size = bit; bit >>= 1;
+      }
 
       while( bit >= sector.length )
       {
