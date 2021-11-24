@@ -222,7 +222,7 @@ public class RandomAccessDevice extends RandomAccessFileV
         //Windows reports disks a few sectors less than they should be.
         //This gets us as close as possible to the actual size without having to scan the disk fully.
 
-        if( path.indexOf("\\\\.\\") >= 0 )
+        if( path.startsWith("\\\\.\\") )
         {
           String index = path.substring( 17, path.length() );
 
@@ -236,14 +236,14 @@ public class RandomAccessDevice extends RandomAccessFileV
             {
               size = Long.parseUnsignedLong(s[i].substring( sep ).replaceAll(" ", ""), 10 ) + 5102 * sector.length;
 
-              super.seek( size + sector.length ); super.read( sector );
+              super.seek( size + sector.length ); super.read( sector ); //Goto exception if size is last sector.
             }
           }
         }
 
         //MacOS
 
-        if( path.indexOf( "/dev/r" ) >= 0 )
+        else if( path.startsWith( "/dev/rdisk" ) )
         {
           Process p = new ProcessBuilder(new String[] { "/bin/bash", "-c", "diskutil info " + path + " | grep \"Disk Size\"" }).start();
 
@@ -251,10 +251,19 @@ public class RandomAccessDevice extends RandomAccessFileV
 
           return( Long.parseUnsignedLong( s.substring( s.indexOf("(") + 1, s.indexOf(" Bytes)") ), 10 ) );
         }
+        
+        //Linux
+        
+        else if( path.startsWith( "/dev/sd" ) )
+        {
+          Process p = new ProcessBuilder(new String[] { "/bin/bash", "-c", "lsblk -bno SIZE " + path }).start();
+          
+          return( Long.parseUnsignedLong( new BufferedReader( new InputStreamReader( p.getInputStream() ) ).readLine(), 10 ) );
+        }
       }
       catch( IOException e )
       {
-        //Determines the last sector was found in windows.
+        //Determines the last sector was found in windows without any further calculation.
 
         if( size != 0 ) { try { super.seek( size ); super.read( sector ); return( size + sector.length - 1 ); } catch( IOException er ) { } }
       }
