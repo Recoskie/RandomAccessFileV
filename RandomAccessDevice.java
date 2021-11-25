@@ -213,6 +213,8 @@ public class RandomAccessDevice extends RandomAccessFileV
 
   @Override public long length()
   {
+    //If the built in IO length method could not find size then size is 0.
+
     if( size == 0 )
     {
       super.Events = false; try { TempPos = super.getFilePointer(); } catch( IOException e ) { }
@@ -249,7 +251,9 @@ public class RandomAccessDevice extends RandomAccessFileV
 
           String s = new BufferedReader( new InputStreamReader( p.getInputStream() ) ).readLine();
 
-          return( Long.parseUnsignedLong( s.substring( s.indexOf("(") + 1, s.indexOf(" Bytes)") ), 10 ) );
+          size = Long.parseUnsignedLong( s.substring( s.indexOf("(") + 1, s.indexOf(" Bytes)") ), 10 );
+
+          return( size );
         }
         
         //Linux
@@ -257,38 +261,45 @@ public class RandomAccessDevice extends RandomAccessFileV
         else if( path.startsWith( "/dev/sd" ) )
         {
           Process p = new ProcessBuilder(new String[] { "/bin/bash", "-c", "lsblk -bno SIZE " + path }).start();
+
+          size = Long.parseUnsignedLong( new BufferedReader( new InputStreamReader( p.getInputStream() ) ).readLine(), 10 );
           
-          return( Long.parseUnsignedLong( new BufferedReader( new InputStreamReader( p.getInputStream() ) ).readLine(), 10 ) );
+          return( size );
         }
       }
       catch( IOException e )
       {
         //Determines the last sector was found in windows without any further calculation.
 
-        if( size != 0 ) { try { super.seek( size ); super.read( sector ); return( size + sector.length - 1 ); } catch( IOException er ) { } }
+        if( size != 0 ) { try { super.seek( size ); super.read( sector ); size = size + sector.length - 1; return( size ); } catch( IOException er ) { } }
       }
 
-      //Fail to query disk size information then calculate the length of a raw disk volume.
+      //Failed to query disk size information, then calculate the length of a raw disk volume (Slow and is done before OS boots).
 
       long bit = sector.length; boolean end = false;
+
+      //Find the disk multiple of 2 size if size is 0.
     
       if( size == 0 ) { end = false; while( bit <= 0x4000000000000000L && !end ) { try { super.seek( bit <<= 1 ); super.read( sector ); } catch( IOException e ) { bit >>= 1; size |= bit; end = true; } } }
-      else
-      {
-        bit = 1L << ( (int)( Math.log( size ) / Math.log(2) ) ); size = bit; bit >>= 1;
-      }
+      
+      //If size is not 0, then we queried the disk size in multiple of 2, but it may be a few sectors off.
+      
+      else { bit = 1L << ( (int)( Math.log( size ) / Math.log(2) ) ); size = bit; bit >>= 1; }
 
-      while( bit >= sector.length )
-      {
-        try { super.seek( size | bit ); super.read( sector ); size |= bit; } catch( IOException e ) { }
+      //Calculate the final bit placements for the final sector.
 
-        bit >>= 1;
-      }
+      while( bit >= sector.length ) { try { super.seek( size | bit ); super.read( sector ); size |= bit; } catch( IOException e ) { } bit >>= 1; }
 
-      size += sector.length - 1; //End of last sector.
+      //Add last sector -1 byte, for exact size in bytes.
+
+      size += sector.length - 1;
+
+      //Restore the state of the IO system.
     
       try { super.seek( TempPos ); } catch( IOException e ) { } super.Events = true;
     }
+
+    //Return size.
 
     return( size );
   }
