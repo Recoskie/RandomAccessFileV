@@ -152,7 +152,11 @@ public class RandomAccessDevice extends RandomAccessFileV
 
     //Restore event state.
 
-    super.Events = e; return( r );
+    super.Events = e;
+    
+    if( size != 0 ) { return (int) ( ( TempPos + r ) > size ? size - TempPos : r ); }
+
+    return( r );
   }
 
   @Override public int readV( byte[] b, int off, int len ) throws IOException
@@ -206,7 +210,11 @@ public class RandomAccessDevice extends RandomAccessFileV
 
     //Restore event state.
 
-    super.Events = e; return( r - off );
+    super.Events = e;
+    
+    if( size != 0 ) { return (int) ( ( ( TempPos + r ) > size ? size - TempPos : r ) - off ); }
+
+    return( r - off );
   }
 
   //The size of the disk.
