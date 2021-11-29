@@ -279,7 +279,7 @@ public class RandomAccessDevice extends RandomAccessFileV
       {
         //Determines the last sector was found in windows without any further calculation.
 
-        if( size != 0 ) { try { super.seek( size ); super.read( sector ); size = size + sector.length - 1; return( size ); } catch( IOException er ) { } }
+        if( size != 0 ) { try { super.seek( size ); super.read( sector ); size = size + sector.length; return( size ); } catch( IOException er ) { } }
       }
 
       //Failed to query disk size information, then calculate the length of a raw disk volume (Slow and is done before OS boots).
@@ -298,9 +298,9 @@ public class RandomAccessDevice extends RandomAccessFileV
 
       while( bit >= sector.length ) { try { super.seek( size | bit ); super.read( sector ); size |= bit; } catch( IOException e ) { } bit >>= 1; }
 
-      //Add last sector -1 byte, for exact size in bytes.
+      //Add last sector, for exact size in bytes.
 
-      size += sector.length - 1;
+      size += sector.length;
 
       //Restore the state of the IO system.
     
