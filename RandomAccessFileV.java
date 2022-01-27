@@ -303,6 +303,23 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     curVra = Map.get(0);
   }
+
+  //Lookup file position to virtual address.
+
+  public long toVirtual( long offset )
+  {
+    for( Index = MSize - 1; Index > 0; Index-- )
+    {
+      curVra = Map.get( Index );
+
+      if( offset >= curVra.Pos && offset <= curVra.FEnd )
+      {
+        return( curVra.VPos + ( offset - curVra.Pos ) );
+      }
+    }
+
+    return( 0 );
+  }
   
   //Get the virtual address pointer. Relative to the File offset pointer.
   
