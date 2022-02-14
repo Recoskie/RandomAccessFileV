@@ -49,6 +49,10 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
   public static boolean readOnly = false;
 
+  //Current file that is open.
+
+  private String filePath = "";
+
   //Add and remove event listeners.
 
   public void addIOEventListener( IOEventListener listener )
@@ -249,9 +253,9 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
   
   //Construct the reader using an file, or disk drive.
   
-  public RandomAccessFileV( File file, String mode ) throws FileNotFoundException { super( file, mode ); EventThread = new Thread(this); this.readOnly = mode.indexOf("w") < 0; }
+  public RandomAccessFileV( File file, String mode ) throws FileNotFoundException { super( file, mode ); filePath = file.getAbsolutePath(); EventThread = new Thread(this); this.readOnly = mode.indexOf("w") < 0; }
   
-  public RandomAccessFileV( String name, String mode ) throws FileNotFoundException { super( name, mode ); EventThread = new Thread(this); this.readOnly = mode.indexOf("w") < 0; }
+  public RandomAccessFileV( String name, String mode ) throws FileNotFoundException { super( name, mode ); filePath = name; EventThread = new Thread(this); this.readOnly = mode.indexOf("w") < 0; }
   
   //Temporary data. This is so that components that are dependent on this file system can be used without a target file.
   
@@ -276,6 +280,10 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
     
     TFile.delete();
   }
+
+  //Get the open file.
+
+  public String getFilePath(){ return( filePath ); }
 
   //Check if position is mapped.
 
