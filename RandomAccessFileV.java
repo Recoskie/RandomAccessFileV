@@ -124,7 +124,7 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
   //Keep a reference of the read data.
 
-  private static byte[] d;
+  private static byte[] d, str;
   private static String o = "";
   
   //Positions of an file can be mapped into ram address space locations.
@@ -801,15 +801,15 @@ public class RandomAccessFileV extends RandomAccessFile implements Runnable
 
   public String toText8() { return( new String( d, StandardCharsets.UTF_8 ) ); }
 
-  public String toText8( int off, int end ) { String s = new String( d, StandardCharsets.UTF_8 ); return( s.length() < end ? s : s .substring( off, end ) ); }
+  public String toText8( int off, int end ) { str = new byte[end - off]; for( int i = 0; off < end; str[i++] = d[off++] ); return( new String( str, StandardCharsets.UTF_8 ) ); }
 
   public String toText16() { return( new String( d, StandardCharsets.UTF_16BE ) ); }
 
-  public String toText16( int off, int end ) { String s = new String( d, StandardCharsets.UTF_16BE ); return( s.length() < end ? s : s .substring( off, end ) ); }
+  public String toText16( int off, int end ) { end = off + ((end - off) << 1); str = new byte[end - off]; for( int i = 0; off < end; str[i++] = d[off++] ); return( new String( str, StandardCharsets.UTF_16BE ) ); }
 
   public String toLText16() { return( new String( d, StandardCharsets.UTF_16LE ) ); }
 
-  public String toLText16( int off, int end ) { String s = new String( d, StandardCharsets.UTF_16LE ); return( s.length() < end ? s : s .substring( off, end ) ); }
+  public String toLText16( int off, int end ) { end = off + ((end - off) << 1); str = new byte[end - off]; for( int i = 0; off < end; str[i++] = d[off++] ); return( new String( str, StandardCharsets.UTF_16LE ) ); }
 
   public boolean toBoolean() { return( d[0] == (byte)0xFF ); }
 
