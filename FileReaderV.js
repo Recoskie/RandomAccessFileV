@@ -7,9 +7,7 @@ See https://github.com/Recoskie/RandomAccessFileV/
 
 function FileReaderV(file)
 {
-  this.file = file; this.offset = 0;
-  
-  if( this.file == null ) { this.file = { size : 0 }; }
+  this.file = (file instanceof File) ? file : new File([],""); this.offset = 0;
   
   this.comps = []; this.Events = true;
   
@@ -20,7 +18,30 @@ function FileReaderV(file)
 
 FileReaderV.prototype.setTarget = function(file)
 {
-  this.file = file; this.size = file.size;
+  this.file = (file instanceof File) ? file : new File([],""); this.size = file.size;
+}
+
+//Returns file to select function.
+
+FileReaderV.prototype.getFile = function(file, func)
+{
+  if(typeof(file) == "string")
+  {
+    var self = this, r = new XMLHttpRequest();
+    
+    r.open('GET', file, true); r.responseType = 'blob';
+    
+    r.onload = function()
+    {
+      func(new File([r.response],file));
+    }
+    
+    r.send();
+  }
+  
+  //Everything else then return an empty file.
+  
+  return( new File([],"") );
 }
 
 FileReaderV.prototype.call = function() { }
