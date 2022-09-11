@@ -44,7 +44,9 @@ FileReaderV.prototype.getFile = function(file, func)
   return( new File([],"") );
 }
 
-FileReaderV.prototype.call = function() { }
+FileReaderV.prototype.call = function(obj, func) { this.ref = obj; this.func = func; };
+
+FileReaderV.prototype.ref = function() { }; FileReaderV.prototype.func = "";
 
 FileReaderV.prototype.read = function(size)
 {
@@ -77,7 +79,7 @@ FileReaderV.prototype.fr.onload = function()
       this.parent.comps[i].onread(this.parent);
     }
   }
-  else { this.parent.call.update(this.parent); }
+  else { this.parent.ref[this.parent.func](this.parent); }
 }
         
-FileReaderV.prototype.fr.onerror = function() { console.log("error"); }
+FileReaderV.prototype.fr.onerror = function() { console.error("File IO Error!"); }
