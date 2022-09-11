@@ -246,6 +246,8 @@ Additionally, you can also write compilers that run in javascript as well and us
 
 You can even create emulators that run using only javascript in a web browser and the FileReader API.
 
+You can also create Files in RAM for the game's pictures and textures while emulating it. This has already been done actually.
+
 # Creating IO data Components.
 
 The file reader has an event system that calls methods **onread**, **onseek** to all components in the HTML document that work with data.
