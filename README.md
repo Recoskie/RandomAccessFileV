@@ -232,13 +232,19 @@ The file reader uses the File object. We can create raw binary files in raw java
 </html>
 ```
 
-The File chooser will recognize it as a Real file through file data transfer even though it only exists in RAM memory. This is useful if you want to write code that can manipulate or create binary files, or compile programs. You can have the user chose where to save or download the file using **saveAS**.
+The File chooser will recognize it as a Real file through file data transfer even though it only exists in RAM memory. This is useful if you want to write code that can manipulate or create binary files, or compile programs. You can have the user chose where to save or download the file using **saveAs**.
 
 All of these web app features are supported across mobile phones and PC web browsers. We can process or do anything binary related locally on a phone, PC, or tablet.
 
 We can even Take a File we generated one binary digit at a time in javascript and load it as a picture in a picture element on the page as long as you know how to encode some picture formats one pixel at a time in binary.
 
 We can do the same with audio and video files.
+
+You can create encoders and decoders that run fully in javascript for custom audio/video binary file formats.
+
+Additionally, you can also write compilers that run in javascript as well and use **saveAs** to let the user save their compiled program on the device.
+
+You can even create emulators that run using only javascript in a web browser and the FileReader API.
 
 # Creating IO data Components.
 
