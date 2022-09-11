@@ -54,6 +54,14 @@ FileReaderV.prototype.read = function(size)
 FileReaderV.prototype.seek = function(pos)
 {
   this.offset = pos < 0 ? 0 : pos;
+
+  if( this.Events )
+  {
+    for( var i = 0; i < this.comps.length; i++ )
+    {
+      this.comps[i].onseek(this.parent);
+    }
+  }
 }
 
 FileReaderV.prototype.fr = new FileReader();
@@ -61,12 +69,12 @@ FileReaderV.prototype.fr = new FileReader();
 FileReaderV.prototype.fr.onload = function()
 {
   this.parent.data = new Uint8Array(this.result);
-  
+
   if( this.Events )
   {
     for( var i = 0; i < this.parent.comps.length; i++ )
     {
-      this.parent.comps[i](this.parent);
+      this.parent.comps[i].onread(this.parent);
     }
   }
   else { this.parent.call.update(this.parent); }
