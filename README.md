@@ -57,7 +57,7 @@ We can read bytes directly from a web file. This may be useful if you are design
 ```html
 <html>
   <body onload="init();">
-    <script type="text/javascript" src="RandomAccessFileV/FileReaderV.js"></script>
+    <script type="text/javascript" src="FileReaderV.js"></script>
     <script>
       var file = new FileReaderV();
   
@@ -110,7 +110,7 @@ Now if you want the file chooser to show the file we have opened on the web we n
 ```html
 <html>
   <body onload="init();">
-    <script type="text/javascript" src="RandomAccessFileV/FileReaderV.js"></script>
+    <script type="text/javascript" src="FileReaderV.js"></script>
     <script>
       var file = new FileReaderV();
   
@@ -170,7 +170,7 @@ The file reader uses the File object. We can create raw binary files in raw java
 ```html
 <html>
   <body onload="init();">
-    <script type="text/javascript" src="RandomAccessFileV/FileReaderV.js"></script>
+    <script type="text/javascript" src="FileReaderV.js"></script>
     <script>
       var file = new FileReaderV();
   
@@ -235,6 +235,8 @@ The file reader uses the File object. We can create raw binary files in raw java
 The File chooser will recognize it as a Real file through file data transfer even though it only exists in RAM memory. This is useful if you want to write code that can manipulate or create binary files, or compile programs. You can have the user chose where to save or download the file using **saveAs**.
 
 All of these web app features are supported across mobile phones and PC web browsers. We can process or do anything binary related locally on a phone, PC, or tablet.
+
+# File object examples
 
 We can even Take a File we generated one binary digit at a time in javascript and load it as a picture in a picture element on the page as long as you know how to encode some picture formats one pixel at a time in binary.
 
