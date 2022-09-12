@@ -238,6 +238,8 @@ All of these web app features are supported across mobile phones and PC web brow
 
 # File object examples
 
+All of these web app features are supported across mobile phones, PC, tablet web browsers. We can process or do anything binary related locally on a phone, PC, or tablet.
+
 We can even Take a File we generated one binary digit at a time in javascript and load it as a picture in a picture element on the page as long as you know how to encode some picture formats one pixel at a time in binary.
 
 We can do the same with audio and video files.
