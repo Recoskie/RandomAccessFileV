@@ -50,7 +50,7 @@ FileReaderV.prototype.ref = function() { }; FileReaderV.prototype.func = "";
 
 FileReaderV.prototype.read = function(size)
 {
-  this.fr.readAsArrayBuffer(this.file.slice(this.offset, this.offset + size));
+  if( this.fr.readyState != 1 ) { this.fr.readAsArrayBuffer(this.file.slice(this.offset, this.offset + size)); }
 }
 
 FileReaderV.prototype.seek = function(pos)
