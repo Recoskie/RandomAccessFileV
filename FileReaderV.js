@@ -92,7 +92,7 @@ function FileReaderV(file)
   
   this.data = []; this.dataV = [];
   
-  this.fr.parent = this;
+  this.fr.parent = this.frv.parent = this;
 
   //The mapped addresses.
   
@@ -100,7 +100,7 @@ function FileReaderV(file)
   
   //The virtual address that the current virtual address pointer is in range of.
   
-  this.curVra = Map[0];
+  this.curVra = this.Map[0];
   
   //Speeds up search. By going up or down from current virtual address.
   
@@ -226,7 +226,7 @@ FileReaderV.prototype.resetV = function()
 
 FileReaderV.prototype.read = function(size)
 {
-  if( this.fr.readyState != 1 ) { this.fr.onload = this.offsetMode; this.fr.readAsArrayBuffer(this.file.slice(this.offset, this.offset + size)); }
+  if( this.fr.readyState != 1 ) { this.fr.readAsArrayBuffer(this.file.slice(this.offset, this.offset + size)); }
 }
 
 //We map the reads we are going to be doing then precess then in virtual read mode.
@@ -252,9 +252,7 @@ FileReaderV.prototype.readV = function(size)
 
   if( this.sects[0] && this.fr.readyState != 1 )
   {
-    this.fr.onload = this.virtualMode;
-    
-    this.fr.readAsArrayBuffer(this.file.slice(this.sects[0].Pos, this.sects[0].FEnd));
+    this.frv.readAsArrayBuffer(this.file.slice(this.sects[0].Pos, this.sects[0].FEnd));
   }
 
   //Else Reached the end of the section read.
@@ -363,11 +361,11 @@ FileReaderV.prototype.seekV = function(pos)
   }
 }
 
-FileReaderV.prototype.fr = new FileReader();
+FileReaderV.prototype.fr = new FileReader(); FileReaderV.prototype.frv = new FileReader();
 
 FileReaderV.prototype.sects = []; FileReaderV.prototype.sectN = 0;
 
-FileReaderV.prototype.offsetMode = function()
+FileReaderV.prototype.fr.onload = function()
 {
   this.parent.data = new Uint8Array(this.result);
 
@@ -381,7 +379,7 @@ FileReaderV.prototype.offsetMode = function()
   else { this.parent.ref[this.parent.func](this.parent); }
 }
 
-FileReaderV.prototype.virtualMode = function()
+FileReaderV.prototype.frv.onload = function()
 {
   //Read data sections. Return after last section is read into data buffer V.
 
@@ -412,7 +410,7 @@ FileReaderV.prototype.virtualMode = function()
   }
 }
         
-FileReaderV.prototype.fr.onerror = function() { console.error("File IO Error!"); }
+FileReaderV.prototype.fr.onerror = FileReaderV.prototype.frv.onerror = function() { console.error("File IO Error!"); }
 
 //Used only to debug address space.
 
@@ -427,4 +425,4 @@ if( Number.prototype.address == null )
     for( var s = this.toString(16).toUpperCase(); s.length < 16; s = "0" + s );
     return("0x"+s);
   }
-}
+  }
