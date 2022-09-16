@@ -1,19 +1,110 @@
-/*------------------------------------------------------------
+/*-----------------------------------------------------------------------------------------------------------------------
 This allows us to work with many components on a single file reader and buffer with threaded event handling onread.
 This is a cleaner implementation of the java version of RandomAccessFileV.java.
 Does not support Virtual address mapping yet.
 See https://github.com/Recoskie/RandomAccessFileV/
-------------------------------------------------------------*/
+-----------------------------------------------------------------------------------------------------------------------*/
+  
+//Positions of an file can be mapped into ram address space locations.
+
+function VRA( Pos, Len, VPos, VLen )
+{
+  //Data offset length can't be higher than virtual offset length.
+    
+  if( Len > VLen ){ Len = VLen; }
+  
+  //Calculate file offset end positions and virtual end positions.
+    
+  this.FEnd = Pos + (Len > 0 ? ( Len - 1 ) : 0); this.VEnd = VPos + ( VLen - 1 );
+
+  //Set mapped.
+
+  this.Mapped = Len != 0; this.Pos = Pos; this.Len = Len; this.VPos = VPos; this.VLen = VLen;
+}
+    
+//Set the end of an address when another address writes into this address.
+
+VRA.prototype.setEnd = function( Address )
+{
+  //Set end of the current address to the start of added address.
+      
+  this.VEnd = Address;
+      
+  //Calculate address length.
+      
+  this.VLen = ( this.VEnd + 1 ) - this.VPos;
+      
+  //If there still is data after the added address.
+      
+  this.Len = ( this.Len < this.VLen ) ? this.Len : this.VLen; 
+      
+  //Calculate the bytes written into.
+      
+  this.FEnd = this.Pos + (this.Len > 0 ? ( this.Len - 1 ) : 0);
+
+  //Set mapped.
+
+  this.Mapped = this.Len != 0;
+}
+    
+//Addresses that write over the start of an address.
+    
+VRA.prototype.setStart = function( Address )
+{
+  //Add Data offset to bytes written over at start of address.
+
+  this.Pos += Address - this.VPos;
+        
+  //Move Virtual address start to end of address.
+        
+  this.VPos = Address;
+        
+  //Recalculate length between the new end position.
+        
+  this.Len = ( this.Pos > this.FEnd ) ? 0 : ( this.FEnd + 1 ) - this.Pos;
+      
+  if( this.Len == 0 ) { this.Pos = 0; }
+
+  this.VLen = ( this.VPos > this.VEnd ) ? 0 : ( this.VEnd + 1 ) - this.VPos;
+
+  //Set mapped.
+
+  this.Mapped = this.Len != 0;
+}
+
+//Used to debug Virtual address space.
+
+VRA.prototype.toString = function()
+{
+  return( "-----------------------------------------------------------------------------------------------------------------------\r\n" +
+          "File(Offset)=" + this.Pos.address() + "---FileEnd(Offset)=" + this.FEnd.address() + "\r\n" + 
+          "Start(Address)=" + this.VPos.address() + "---End(Address)=" + this.VEnd.address() + "\r\n" +
+          "VLength=" + this.VLen.address() + "---FLength=" + this.Len.address() + "" );
+}
+
+//Construct file reader.
 
 function FileReaderV(file)
 {
-  this.file = (file instanceof File) ? file : new File([],""); this.offset = 0;
+  this.file = (file instanceof File) ? file : new File([],""); this.offset = 0; this.virtual = 0;
   
   this.comps = []; this.Events = true;
   
-  this.data = [];
+  this.data = []; this.dataV = [];
   
   this.fr.parent = this;
+
+  //The mapped addresses.
+  
+  this.Map = [ new VRA( 0, 0, 0, 0x10000000000000 ), new VRA( 0, 0, 0x10000000000000, 0x10000000000000 ) ];
+  
+  //The virtual address that the current virtual address pointer is in range of.
+  
+  this.curVra = Map[0];
+  
+  //Speeds up search. By going up or down from current virtual address.
+  
+  this.Index = 0;
 }
 
 FileReaderV.prototype.setTarget = function(file)
@@ -27,7 +118,7 @@ FileReaderV.prototype.getFile = function(file, func)
 {
   if(typeof(file) == "string")
   {
-    var self = this, r = new XMLHttpRequest();
+    var r = new XMLHttpRequest();
     
     r.open('GET', file, true); r.responseType = 'blob';
     
@@ -44,13 +135,141 @@ FileReaderV.prototype.getFile = function(file, func)
   return( new File([],"") );
 }
 
+//This is used to call a method after reading data by a format reader, or data tool.
+//The object reference and function name are needed in order to call the function with it's proper function and object reference.
+
 FileReaderV.prototype.call = function(obj, func) { this.ref = obj; this.func = func; };
 
 FileReaderV.prototype.ref = function() { }; FileReaderV.prototype.func = "";
 
+//Add an virtual address.
+  
+FileReaderV.prototype.addV = function( Offset, DataLen, Address, AddressLen ) 
+{
+  //An address can use no data from the file with zero data length and be zero fill space, but it can never contain a zero address length.
+
+  if( AddressLen == 0 ){ return; }
+
+  //There is no need to address this high for any software in contrast to standard memory spacing of a compiled programs sections.
+  //If this ever becomes an problem I will add full 64 bit addressing, but it is very unlikely even for terabyte big programs.
+
+  if( (Address + AddressLen) > 0x001FFFFFFFFFFFFF  ) { console.error("Address out of Bounds!"); return; }
+
+  //Create the address location as "Add" we use "CMP" to compare it against the address map.
+
+  var Add = new VRA( Offset, DataLen, Address, AddressLen ), Cmp = null;
+    
+  //The numerical range the address lines up to in index in the address map.
+    
+  var e = 0;
+
+  //Write in alignment.
+    
+  for( var i = 0; i < this.Map.length; i++ )
+  {
+    Cmp = this.Map[i];
+
+    //Remove any mapped address that is overwritten.
+    //The added address starts at, or before an address, then ends at, or past the address. 
+
+    if( Add.VPos <= Cmp.VPos && Add.VEnd >= Cmp.VEnd ) { Map.splice(i, 1); e = i; i -= 1; }
+      
+    //If the added address writes to an address, but does not write over it fully.
+    //Then the Added address position is at, or before the end of an address, then ends after, or at the start address of an address.
+    
+    else if( Add.VPos <= Cmp.VEnd && Add.VEnd >= Cmp.VPos ) //("start" <= End && "End" >= start) means it overlaps part of the compared address.
+    {
+      e = i;
+
+      //Our address is less than the address end position that we are writing too.
+
+      if( Add.VEnd < Cmp.VEnd )
+      {
+        //If our address is slightly after the start of an address then there is data that remains before our address.
+        //We insert this data as a new address and set the end of the current address.
+        //This allows us to make a space between address and to leave what remains.
+
+        if( Add.VPos > Cmp.VPos )
+        {
+          //We put this reaming data as a new address with the end position before the start of our address we are adding.
+
+          var t = new VRA( Cmp.Pos, Cmp.Len, Cmp.VPos, Cmp.VLen ); t.setEnd( Add.VPos - 1 ); this.Map.splice(i, 0, t); e = i + 1;
+        }
+
+        //Does not write past the compared address. So we set the stating byte to the end of our added address.
+
+        Cmp.setStart( Add.VEnd + 1 );
+      }
+
+      //Writes to End, or past the compared address.
+      //We then make the address length shorter. To allow our added address to start after it.
+        
+      if( Add.VPos > Cmp.VPos ) { Cmp.setEnd( Add.VPos - 1 ); e = i + 1; }
+    }
+  }
+
+  this.Index = e; this.curVra = Add;
+
+  //We palace the address in it's proper position after adjusting the address space to fit it.
+    
+  this.Map.splice( e, 0, Add );
+}
+
+//Reset the Virtual ram map.
+  
+FileReaderV.prototype.resetV = function()
+{    
+  this.Map = [ new VRA( 0, 0, 0, 0x10000000000000 ), new VRA( 0, 0, 0x10000000000000, 0x10000000000000 ) ];
+  
+  this.Index = 0; this.curVra = this.Map[0];
+}
+
 FileReaderV.prototype.read = function(size)
 {
-  if( this.fr.readyState != 1 ) { this.fr.readAsArrayBuffer(this.file.slice(this.offset, this.offset + size)); }
+  if( this.fr.readyState != 1 ) { this.fr.onload = this.offsetMode; this.fr.readAsArrayBuffer(this.file.slice(this.offset, this.offset + size)); }
+}
+
+//We map the reads we are going to be doing then precess then in virtual read mode.
+
+FileReaderV.prototype.readV = function(size)
+{
+  this.dataV = [];
+
+  //Seek address if outside current address space.
+    
+  if( (this.virtual + this.offset) > this.curVra.VEnd ) { this.seekV( this.virtual + this.offset ); }
+
+  //We reference the sections that are going to be read.
+
+  var i = this.Index; Cmp = this.Map[i]; this.sects = [];
+
+  while( this.virtual <= Cmp.VEnd && size >= Cmp.VPos )
+  {
+    this.sects[this.sects.length] = Cmp; Cmp = this.Map[i++];
+  }
+
+  //Read the virtual address mapped sections into buffer.
+
+  if( this.sects[0] && this.fr.readyState != 1 )
+  {
+    this.fr.onload = this.virtualMode;
+    
+    this.fr.readAsArrayBuffer(this.file.slice(this.sects[0].Pos, this.sects[0].FEnd));
+  }
+
+  //Else Reached the end of the section read.
+
+  else
+  {
+    if( this.Events )
+    {
+      for( var i = 0; i < this.comps.length; i++ )
+      {
+        this.comps[i].onread(this);
+      }
+    }
+    else { this.ref[this.func](this); }
+  }
 }
 
 FileReaderV.prototype.seek = function(pos)
@@ -66,9 +285,89 @@ FileReaderV.prototype.seek = function(pos)
   }
 }
 
+FileReaderV.prototype.seekV = function(pos)
+{
+  var r = 0;
+
+  //If address is in range of current address index.
+  
+  if( pos >= this.curVra.VPos && pos <= this.curVra.VEnd )
+  {
+    r = pos - this.curVra.VPos; if( r >= this.curVra.Len ) { r = this.curVra.Len; }
+    
+    if( this.curVra.Len > 0 ) { this.offset = r + this.curVra.Pos; }
+    
+    this.virtual = pos - this.offset;
+  }
+  
+  //If address is grater than the next vra iterate up in indexes.
+  
+  else if( pos >= this.curVra.VEnd || this.Index == -1 )
+  {
+    var e = null;
+    
+    for( var n = this.Index + 1; n < this.Map.length; n++ )
+    {
+      e = this.Map[n];
+      
+      if( pos >= e.VPos && pos <= e.VEnd )
+      {
+        this.Index = n; this.curVra = e;
+
+        r = pos - e.VPos; if( r >= e.Len ) { r = e.Len; }
+        
+        if( this.curVra.Len > 0 ) { this.offset = r + e.Pos; }
+        
+        this.virtual = pos - this.offset;
+
+        //To do Event.
+        
+        return;
+      }
+    }
+  }
+  
+  //else iterate down in indexes.
+  
+  else if( pos <= this.curVra.VPos )
+  {
+    var e = null;
+    
+    for( var n = this.Index - 1; n > -1; n-- )
+    {
+      e = this.Map[n];
+      
+      if( pos >= e.VPos && pos <= e.VEnd )
+      {
+        this.Index = n; this.curVra = e;
+
+        r = pos - e.VPos; if( r >= e.Len ) { r = e.Len; }
+        
+        if( this.curVra.Len > 0 ) { this.offset = r + e.Pos; }
+        
+        this.virtual = pos - this.offset;
+
+        //To do Event.
+        
+        return;
+      }
+    }
+  }
+
+  if( this.Events )
+  {
+    for( var i = 0; i < this.comps.length; i++ )
+    {
+      this.comps[i].onseek(this.parent);
+    }
+  }
+}
+
 FileReaderV.prototype.fr = new FileReader();
 
-FileReaderV.prototype.fr.onload = function()
+FileReaderV.prototype.sects = []; FileReaderV.prototype.sectN = 0;
+
+FileReaderV.prototype.offsetMode = function()
 {
   this.parent.data = new Uint8Array(this.result);
 
@@ -81,5 +380,51 @@ FileReaderV.prototype.fr.onload = function()
   }
   else { this.parent.ref[this.parent.func](this.parent); }
 }
+
+FileReaderV.prototype.virtualMode = function()
+{
+  //Read data sections. Return after last section is read into data buffer V.
+
+  var sectN = this.parent.sectN, map = this.parent.sects[sectN], sects = this.parent.sects.length;
+
+  //Place current read data into virtual space.
+
+  for( var buf = new Uint8Array(this.result), v = map.VPos - (this.parent.offset + this.parent.virtual), i = 0; v <= map.VEnd; this.parent.dataV[v++] = buf[i] == null ? 0 : buf[i++] );
+
+  //Read next section.
+    
+  if( ( this.parent.sectN += 1 ) < sects ) { this.readAsArrayBuffer(this.parent.file.slice(this.parent.sects[this.parent.sectN].Pos, this.parent.sects[this.parent.sectN].FEnd)); }
+
+  //Else Reached the end of the section read.
+
+  else
+  {
+    this.parent.sects = []; this.parent.sectN = 0;
+
+    if( this.Events )
+    {
+      for( var i = 0; i < this.parent.comps.length; i++ )
+      {
+        this.parent.comps[i].onread(this.parent);
+      }
+    }
+    else { this.parent.ref[this.parent.func](this.parent); }
+  }
+}
         
 FileReaderV.prototype.fr.onerror = function() { console.error("File IO Error!"); }
+
+//Used only to debug address space.
+
+FileReaderV.prototype.debug = function() { for( var i = 0, s = ""; i < this.Map.length; s += this.Map[i++] + "\r\n" ); console.log(s); }
+
+//Address format offsets for debug output used by VRA toString.
+
+if( Number.prototype.address == null )
+{
+  Number.prototype.address = function()
+  {
+    for( var s = this.toString(16).toUpperCase(); s.length < 16; s = "0" + s );
+    return("0x"+s);
+  }
+}
