@@ -237,16 +237,26 @@ FileReaderV.prototype.readV = function(size)
 
   //Seek address if outside current address space.
     
-  if( (this.virtual + this.offset) > this.curVra.VEnd ) { this.seekV( this.virtual + this.offset ); }
+  if( this.virtual > this.curVra.VEnd || this.virtual < this.curVra.VEnd ) { this.seekV( this.virtual ); }
 
   //We reference the sections that are going to be read.
 
-  var i = this.Index; Cmp = this.Map[i]; this.sects = [];
+  var i = this.Index; Cmp = this.Map[i++]; this.sects = [new VRA(Cmp.Pos,Cmp.Len,Cmp.VPos,Cmp.VLen)], end = this.virtual + size;
 
-  while( this.virtual <= Cmp.VEnd && size >= Cmp.VPos )
+  //We are most likely not going to start at the beginning of an address.
+
+  this.sects[0].setStart(this.virtual);
+
+  //Reference all addresses within the alignment of our read.
+
+  Cmp = this.Map[i]; while( this.virtual <= Cmp.VEnd && end >= Cmp.VPos )
   {
-    this.sects[this.sects.length] = Cmp; Cmp = this.Map[i++];
+    Cmp = this.Map[i++]; this.sects[this.sects.length] = Cmp;
   }
+
+  //We are most likely not going to read to the end of the last address.
+
+  Cmp = this.sects.pop(); Cmp = new VRA(Cmp.Pos,Cmp.Len,Cmp.VPos,Cmp.VLen); Cmp.setEnd(this.virtual + size); this.sects.push(Cmp);
 
   //Read the virtual address mapped sections into buffer.
 
@@ -295,7 +305,7 @@ FileReaderV.prototype.seekV = function(pos)
     
     if( this.curVra.Len > 0 ) { this.offset = r + this.curVra.Pos; }
     
-    this.virtual = pos - this.offset;
+    this.virtual = pos;
   }
   
   //If address is grater than the next vra iterate up in indexes.
@@ -316,7 +326,7 @@ FileReaderV.prototype.seekV = function(pos)
         
         if( this.curVra.Len > 0 ) { this.offset = r + e.Pos; }
         
-        this.virtual = pos - this.offset;
+        this.virtual = pos;
 
         //To do Event.
         
@@ -343,7 +353,7 @@ FileReaderV.prototype.seekV = function(pos)
         
         if( this.curVra.Len > 0 ) { this.offset = r + e.Pos; }
         
-        this.virtual = pos - this.offset;
+        this.virtual = pos;
 
         //To do Event.
         
@@ -387,7 +397,7 @@ FileReaderV.prototype.frv.onload = function()
 
   //Place current read data into virtual space.
 
-  for( var buf = new Uint8Array(this.result), v = map.VPos - (this.parent.offset + this.parent.virtual), i = 0; v <= map.VEnd; this.parent.dataV[v++] = buf[i] == null ? 0 : buf[i++] );
+  for( var buf = new Uint8Array(this.result), v = map.VPos - this.parent.virtual, i = 0; v <= map.VEnd; this.parent.dataV[v++] = buf[i] == null ? NaN : buf[i++] );
 
   //Read next section.
     
