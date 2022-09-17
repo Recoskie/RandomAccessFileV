@@ -203,7 +203,7 @@ FileReaderV.prototype.addV = function( Offset, DataLen, Address, AddressLen )
 
       //Writes to End, or past the compared address.
       //We then make the address length shorter. To allow our added address to start after it.
-        
+      
       if( Add.VPos > Cmp.VPos ) { Cmp.setEnd( Add.VPos - 1 ); e = i + 1; }
     }
   }
@@ -241,18 +241,15 @@ FileReaderV.prototype.readV = function(size)
 
   //We reference the sections that are going to be read.
 
-  var i = this.Index; Cmp = this.Map[i++]; this.sects = [new VRA(Cmp.Pos,Cmp.Len,Cmp.VPos,Cmp.VLen)], end = this.virtual + size;
-
-  //We are most likely not going to start at the beginning of an address.
-
-  this.sects[0].setStart(this.virtual);
+  var i = this.Index; Cmp = this.Map[i]; this.sects = [], end = this.virtual + size;
 
   //Reference all addresses within the alignment of our read.
 
-  Cmp = this.Map[i]; while( this.virtual <= Cmp.VEnd && end >= Cmp.VPos )
-  {
-    Cmp = this.Map[i++]; this.sects[this.sects.length] = Cmp;
-  }
+  Cmp = this.Map[i++]; while( end >= Cmp.VPos && this.virtual <= Cmp.VEnd ) { this.sects[this.sects.length] = Cmp; Cmp = this.Map[i++]; }
+
+  //We are most likely not going to start at the beginning of an address.
+
+  Cmp = this.sects.shift(); Cmp = new VRA(Cmp.Pos,Cmp.Len,Cmp.VPos,Cmp.VLen); Cmp.setStart(this.virtual); this.sects.unshift(Cmp);
 
   //We are most likely not going to read to the end of the last address.
 
@@ -262,7 +259,7 @@ FileReaderV.prototype.readV = function(size)
 
   if( this.sects[0] && this.fr.readyState != 1 )
   {
-    this.frv.readAsArrayBuffer(this.file.slice(this.sects[0].Pos, this.sects[0].FEnd));
+    this.frv.readAsArrayBuffer(this.file.slice(this.sects[0].Pos, this.sects[0].Pos + this.sects[0].Len));
   }
 
   //Else Reached the end of the section read.
@@ -401,7 +398,7 @@ FileReaderV.prototype.frv.onload = function()
 
   //Read next section.
     
-  if( ( this.parent.sectN += 1 ) < sects ) { this.readAsArrayBuffer(this.parent.file.slice(this.parent.sects[this.parent.sectN].Pos, this.parent.sects[this.parent.sectN].FEnd)); }
+  if( ( this.parent.sectN += 1 ) < sects ) { this.readAsArrayBuffer(this.parent.file.slice(this.parent.sects[this.parent.sectN].Pos, this.parent.sects[this.parent.sectN].Pos + this.parent.sects[this.parent.sectN].Len)); }
 
   //Else Reached the end of the section read.
 
