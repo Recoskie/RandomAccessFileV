@@ -26,6 +26,8 @@ function VRA( Pos, Len, VPos, VLen )
 
 VRA.prototype.setEnd = function( Address )
 {
+  if( this.VEnd == Address ){ return; }
+
   //Set end of the current address to the start of added address.
       
   this.VEnd = Address;
@@ -51,6 +53,8 @@ VRA.prototype.setEnd = function( Address )
     
 VRA.prototype.setStart = function( Address )
 {
+  if( Address == this.VPos ){ return; }
+
   //Add Data offset to bytes written over at start of address.
 
   this.Pos += Address - this.VPos;
@@ -394,7 +398,7 @@ FileReaderV.prototype.frv.onload = function()
 
   //Place current read data into virtual space.
 
-  for( var buf = new Uint8Array(this.result), v = map.VPos - this.parent.virtual, i = 0; v <= map.VEnd; this.parent.dataV[v++] = buf[i] == null ? NaN : buf[i++] );
+  for( var buf = new Uint8Array(this.result), v = map.VPos - this.parent.virtual, i = 0; i < buf.length; this.parent.dataV[v++] = buf[i++] );
 
   //Read next section.
     
