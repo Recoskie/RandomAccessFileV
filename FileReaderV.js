@@ -289,7 +289,7 @@ FileReaderV.prototype.seek = function(pos)
   {
     for( var i = 0; i < this.comps.length; i++ )
     {
-      this.comps[i].onseek(this.parent);
+      this.comps[i].onseek(this);
     }
   }
 }
@@ -367,7 +367,7 @@ FileReaderV.prototype.seekV = function(pos)
   {
     for( var i = 0; i < this.comps.length; i++ )
     {
-      this.comps[i].onseek(this.parent);
+      this.comps[i].onseek(this);
     }
   }
 }
@@ -436,4 +436,4 @@ if( Number.prototype.address == null )
     for( var s = this.toString(16).toUpperCase(); s.length < 16; s = "0" + s );
     return("0x"+s);
   }
-  }
+}
