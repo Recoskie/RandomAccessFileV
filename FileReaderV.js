@@ -249,19 +249,19 @@ FileReaderV.prototype.readV = function(size)
 
   //Reference all addresses within the alignment of our read.
 
-  Cmp = this.Map[i++]; while( end >= Cmp.VPos && this.virtual <= Cmp.VEnd ) { this.sects[this.sects.length] = Cmp; Cmp = this.Map[i++]; }
+  Cmp = this.Map[i++]; while( end >= Cmp.VPos && this.virtual <= Cmp.VEnd ) { if(Cmp.Len != 0) { this.sects[this.sects.length] = Cmp; } Cmp = this.Map[i++]; }
 
   //We are most likely not going to start at the beginning of an address.
 
-  Cmp = this.sects.shift(); Cmp = new VRA(Cmp.Pos,Cmp.Len,Cmp.VPos,Cmp.VLen); Cmp.setStart(this.virtual); this.sects.unshift(Cmp);
+  if(this.sects.length > 0) { Cmp = this.sects.shift(); Cmp = new VRA(Cmp.Pos,Cmp.Len,Cmp.VPos,Cmp.VLen); Cmp.setStart(this.virtual); if(Cmp.Len != 0){ this.sects.unshift(Cmp); } }
 
   //We are most likely not going to read to the end of the last address.
 
-  Cmp = this.sects.pop(); Cmp = new VRA(Cmp.Pos,Cmp.Len,Cmp.VPos,Cmp.VLen); Cmp.setEnd(this.virtual + size); this.sects.push(Cmp);
+  if(this.sects.length > 0) { Cmp = this.sects.pop(); Cmp = new VRA(Cmp.Pos,Cmp.Len,Cmp.VPos,Cmp.VLen); Cmp.setEnd(this.virtual + size); if(Cmp.Len != 0) { this.sects.push(Cmp); } }
 
   //Read the virtual address mapped sections into buffer.
 
-  if( this.sects[0] && this.fr.readyState != 1 )
+  if( this.sects.length > 0 && this.fr.readyState != 1 )
   {
     this.frv.readAsArrayBuffer(this.file.slice(this.sects[0].Pos, this.sects[0].Pos + this.sects[0].Len));
   }
