@@ -26,7 +26,7 @@ function VRA( Pos, Len, VPos, VLen )
 
 VRA.prototype.setEnd = function( Address )
 {
-  if( this.VEnd == Address ){ return; }
+  if( this.VEnd <= Address ){ return; }
 
   //Set end of the current address to the start of added address.
       
@@ -53,7 +53,7 @@ VRA.prototype.setEnd = function( Address )
     
 VRA.prototype.setStart = function( Address )
 {
-  if( Address == this.VPos ){ return; }
+  if( this.VPos >= Address ){ return; }
 
   //Add Data offset to bytes written over at start of address.
 
@@ -249,15 +249,15 @@ FileReaderV.prototype.readV = function(size)
 
   //Reference all addresses within the alignment of our read.
 
-  Cmp = this.Map[i++]; while( end >= Cmp.VPos && this.virtual <= Cmp.VEnd ) { if(Cmp.Len != 0) { this.sects[this.sects.length] = Cmp; } Cmp = this.Map[i++]; }
+  Cmp = this.Map[i++]; while( end >= Cmp.VPos && this.virtual <= Cmp.VEnd ) { if(Cmp.Mapped) { this.sects[this.sects.length] = Cmp; } Cmp = this.Map[i++]; }
 
   //We are most likely not going to start at the beginning of an address.
 
-  if(this.sects.length > 0) { Cmp = this.sects.shift(); Cmp = new VRA(Cmp.Pos,Cmp.Len,Cmp.VPos,Cmp.VLen); Cmp.setStart(this.virtual); if(Cmp.Len != 0){ this.sects.unshift(Cmp); } }
+  if(this.sects.length > 0) { Cmp = this.sects.shift(); Cmp = new VRA(Cmp.Pos,Cmp.Len,Cmp.VPos,Cmp.VLen); Cmp.setStart(this.virtual); if(Cmp.Mapped){ this.sects.unshift(Cmp); } }
 
   //We are most likely not going to read to the end of the last address.
 
-  if(this.sects.length > 0) { Cmp = this.sects.pop(); Cmp = new VRA(Cmp.Pos,Cmp.Len,Cmp.VPos,Cmp.VLen); Cmp.setEnd(this.virtual + size); if(Cmp.Len != 0) { this.sects.push(Cmp); } }
+  if(this.sects.length > 0) { Cmp = this.sects.pop(); Cmp = new VRA(Cmp.Pos,Cmp.Len,Cmp.VPos,Cmp.VLen); Cmp.setEnd(this.virtual + size); if(Cmp.Mapped) { this.sects.push(Cmp); } }
 
   //Read the virtual address mapped sections into buffer.
 
@@ -398,7 +398,7 @@ FileReaderV.prototype.frv.onload = function()
 
   //Place current read data into virtual space.
 
-  for( var buf = new Uint8Array(this.result), v = map.VPos - this.parent.virtual, i = 0; i < buf.length; this.parent.dataV[v++] = buf[i++] );
+  for( var buf = new Uint8Array(this.result), v = map.VPos - this.parent.virtual, i = 0; i < map.VLen; this.parent.dataV[v++] = isNaN(buf[i]) ? 0 : buf[i], i++ );
 
   //Read next section.
     
