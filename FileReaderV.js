@@ -274,7 +274,7 @@ FileReaderV.prototype.readV = function(size)
     {
       for( var i = 0; i < this.comps.length; i++ )
       {
-        this.comps[i].onread(this);
+        if(this.comps[i].visible) { this.comps[i].onread(this); }
       }
     }
     else { this.ref[this.func](this); }
@@ -289,7 +289,7 @@ FileReaderV.prototype.seek = function(pos)
   {
     for( var i = 0; i < this.comps.length; i++ )
     {
-      this.comps[i].onseek(this);
+      if(this.comps[i].visible) { this.comps[i].onseek(this); }
     }
   }
 }
@@ -367,7 +367,7 @@ FileReaderV.prototype.seekV = function(pos)
   {
     for( var i = 0; i < this.comps.length; i++ )
     {
-      this.comps[i].onseek(this);
+      if(this.comps[i].visible) { this.comps[i].onseek(this); }
     }
   }
 }
