@@ -100,7 +100,7 @@ function FileReaderV(file)
 
   //The mapped addresses.
   
-  this.Map = [ new VRA( 0, 0, 0, 0x10000000000000 ), new VRA( 0, 0, 0x10000000000000, 0x10000000000000 ) ];
+  this.Map = [ new VRA( 0, 0, 0, 0x20000000000000 ) ];
   
   //The virtual address that the current virtual address pointer is in range of.
   
@@ -223,7 +223,7 @@ FileReaderV.prototype.addV = function( Offset, DataLen, Address, AddressLen )
   
 FileReaderV.prototype.resetV = function()
 {    
-  this.Map = [ new VRA( 0, 0, 0, 0x10000000000000 ), new VRA( 0, 0, 0x10000000000000, 0x10000000000000 ) ];
+  this.Map = [ new VRA( 0, 0, 0, 0x20000000000000 ) ];
   
   this.Index = 0; this.curVra = this.Map[0];
 }
@@ -249,7 +249,7 @@ FileReaderV.prototype.readV = function(size)
 
   //Reference all addresses within the alignment of our read.
 
-  Cmp = this.Map[i++]; while( end >= Cmp.VPos && this.virtual <= Cmp.VEnd ) { if(Cmp.Mapped) { this.sects[this.sects.length] = Cmp; } Cmp = this.Map[i++]; }
+  Cmp = this.Map[i++]; while( Cmp && end >= Cmp.VPos && this.virtual <= Cmp.VEnd ) { if(Cmp.Mapped) { this.sects[this.sects.length] = Cmp; } Cmp = this.Map[i++]; }
 
   //We are most likely not going to start at the beginning of an address.
 
