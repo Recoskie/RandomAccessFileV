@@ -328,10 +328,6 @@ FileReaderV.prototype.seekV = function(pos)
         if( this.curVra.Len > 0 ) { this.offset = r + e.Pos; }
         
         this.virtual = pos;
-
-        //To do Event.
-        
-        return;
       }
     }
   }
@@ -355,10 +351,6 @@ FileReaderV.prototype.seekV = function(pos)
         if( this.curVra.Len > 0 ) { this.offset = r + e.Pos; }
         
         this.virtual = pos;
-
-        //To do Event.
-        
-        return;
       }
     }
   }
