@@ -142,7 +142,7 @@ FileReaderV.prototype.getFile = function(file, func)
 //This is used to call a method after reading data by a format reader, or data tool.
 //The object reference and function name are needed in order to call the function with it's proper function and object reference.
 
-FileReaderV.prototype.call = function(obj, func) { this.ref = obj; this.func = func; };
+FileReaderV.prototype.call = function(obj, func) { this.Events = false; this.ref = obj; this.func = func; };
 
 FileReaderV.prototype.ref = function() { }; FileReaderV.prototype.func = "";
 
@@ -380,14 +380,14 @@ FileReaderV.prototype.fr.onload = function()
 {
   this.parent.data = new Uint8Array(this.result); this.parent.data.offset = this.parent.offset;
 
-  if( this.Events )
+  if( this.parent.Events )
   {
     for( var i = 0; i < this.parent.comps.length; i++ )
     {
       this.parent.comps[i].onread(this.parent);
     }
   }
-  else { this.parent.ref[this.parent.func](this.parent); }
+  else { this.parent.Events = true; this.parent.ref[this.parent.func](this.parent); }
 }
 
 FileReaderV.prototype.frv.onload = function()
@@ -410,15 +410,20 @@ FileReaderV.prototype.frv.onload = function()
   {
     this.parent.sects = []; this.parent.sectN = 0;
 
-    if( this.Events )
+    if( this.parent.Events )
     {
       for( var i = 0; i < this.parent.comps.length; i++ )
       {
         this.parent.comps[i].onread(this.parent);
       }
     }
-    else { this.parent.ref[this.parent.func](this.parent); }
+    else { this.parent.Events = true; this.parent.ref[this.parent.func](this.parent); }
   }
+}
+
+FileReaderV.prototype.init = function(source,func,size)
+{
+  this.offset = 0; this.call(source ,func); this.read(size);
 }
         
 FileReaderV.prototype.fr.onerror = FileReaderV.prototype.frv.onerror = function() { console.error("File IO Error!"); }
