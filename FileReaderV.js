@@ -95,6 +95,8 @@ function FileReaderV(file)
   this.comps = []; this.Events = true;
   
   this.data = []; this.dataV = [];
+
+  this.data.offset = 0; this.dataV.offset = 0;
   
   this.fr.parent = this.frv.parent = this;
 
