@@ -285,8 +285,8 @@ FileReaderV.prototype.readV = function(size)
 
 FileReaderV.prototype.seek = function(pos)
 {
-  /*It is posible the same offsets are mapped to multiple VRA addresses.
-  seek moves virtual address around in curent VRA only.*/
+  /*It is possible the same offsets are mapped to multiple VRA addresses.
+  seek moves virtual address around in current VRA only.*/
   
   this.offset = pos < 0 ? 0 : pos;
   
