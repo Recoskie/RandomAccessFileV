@@ -115,7 +115,7 @@ function FileReaderV(file)
 
 FileReaderV.prototype.setTarget = function(file)
 {
-  this.file = (file instanceof File) ? file : new File([],""); this.size = file.size;
+  this.file = (file instanceof File) ? file : new File([],""); this.size = file.size; this.name = file.name;
 }
 
 //Returns file to select function.
