@@ -227,7 +227,7 @@ FileReaderV.prototype.resetV = function()
 {    
   this.Map = [ new VRA( 0, 0, 0, 0x20000000000000 ) ];
   
-  this.Index = 0; this.curVra = this.Map[0];
+  this.Index = 0; this.curVra = this.Map[0]; this.dataV.length = 0;
 }
 
 FileReaderV.prototype.read = function(size)
