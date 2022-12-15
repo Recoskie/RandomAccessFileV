@@ -1,7 +1,6 @@
 /*-----------------------------------------------------------------------------------------------------------------------
 This allows us to work with many components on a single file reader and buffer with threaded event handling onread.
 This is a cleaner implementation of the java version of RandomAccessFileV.java.
-Does not support Virtual address mapping yet.
 See https://github.com/Recoskie/RandomAccessFileV/
 -----------------------------------------------------------------------------------------------------------------------*/
   
@@ -232,7 +231,7 @@ FileReaderV.prototype.resetV = function()
 
 FileReaderV.prototype.read = function(size)
 {
-  if( this.fr.readyState != 1 ) { this.fr.readAsArrayBuffer(this.file.slice(this.offset, this.offset + size)); }
+  if( this.fr.readyState != 1 ) { this.fr.readAsArrayBuffer(this.file.slice(this.offset, this.offset+size)); }
 }
 
 //We map the reads we are going to be doing then precess then in virtual read mode.
@@ -290,18 +289,14 @@ FileReaderV.prototype.seek = function(pos)
   
   this.offset = pos < 0 ? 0 : pos;
   
-  if( this.curVra.Mapped && pos < this.curVra.FEnd && this.curVra.Pos )
+  if( this.curVra.Mapped && pos <= this.curVra.FEnd && pos >= this.curVra.Pos )
   {
     this.virtual = ( pos - this.curVra.Pos ) + this.curVra.VPos;
   }
 
-  if( this.Events )
-  {
-    for( var i = 0; i < this.comps.length; i++ )
-    {
-      if(this.comps[i].visible) { this.comps[i].onseek(this); }
-    }
-  }
+  //It is important that both the virtual and offset buffers are synchronized.
+
+  if( this.Events ) { this.oldOffset = this.offset; this.oldVirtual = this.virtual; this.call(this, "seekEventV"); this.initBufV(); }
 }
 
 FileReaderV.prototype.seekV = function(pos)
@@ -365,12 +360,20 @@ FileReaderV.prototype.seekV = function(pos)
     }
   }
 
-  if( this.Events )
+  //if the current buffer is not within the seek location than it must be updated before calling events.
+  
+  if( this.Events ) { this.oldOffset = this.offset; this.oldVirtual = this.virtual; this.call(this,"seekEventV"); this.initBufV(); }
+}
+
+FileReaderV.prototype.seekEventV = function() { this.call(this, "seekEvent"); this.initBuf(); }
+
+FileReaderV.prototype.seekEvent = function()
+{
+  if( this.oldOffset >= 0 ){ this.offset = this.oldOffset; this.virtual = this.oldVirtual; this.oldOffset = -1; this.oldVirtual = -1; }
+
+  for( var i = 0; i < this.comps.length; i++ )
   {
-    for( var i = 0; i < this.comps.length; i++ )
-    {
-      if(this.comps[i].visible) { this.comps[i].onseek(this); }
-    }
+    if(this.comps[i].visible) { this.comps[i].onseek(this); }
   }
 }
 
@@ -410,7 +413,7 @@ FileReaderV.prototype.frv.onload = function()
 
   else
   {
-    this.parent.sects = []; this.parent.sectN = 0;
+    this.parent.sects = []; this.parent.sectN = 0; this.parent.dataV.offset = this.parent.virtual;
 
     if( this.parent.Events )
     {
@@ -423,9 +426,26 @@ FileReaderV.prototype.frv.onload = function()
   }
 }
 
-FileReaderV.prototype.init = function(source,func,size)
+FileReaderV.prototype.buf = 0; FileReaderV.prototype.oldVirtual = -1; FileReaderV.prototype.oldOffset = -1;
+
+FileReaderV.prototype.setBuf = function(b) { if( this.data.length > b ){ this.data.length = b; this.dataV.length = b; } this.buf = b; }
+
+FileReaderV.prototype.initBuf = function()
 {
-  this.offset = 0; this.call(source ,func); this.read(size);
+  if( this.offset <= this.data.offset || this.offset >= (this.data.offset + this.data.length) )
+  {
+    this.offset -= this.offset & 0xF; this.read(this.buf);
+  }
+  else { this.Events = true; this.ref[this.func](); }
+}
+
+FileReaderV.prototype.initBufV = function()
+{
+  if( this.virtual <= this.dataV.offset || this.virtual >= (this.dataV.offset + this.dataV.length) )
+  {
+    this.virtual -= this.virtual & 0xF; this.readV(this.buf);
+  }
+  else { this.Events = true; this.ref[this.func](); }
 }
         
 FileReaderV.prototype.fr.onerror = FileReaderV.prototype.frv.onerror = function() { console.error("File IO Error!"); }
