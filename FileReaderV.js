@@ -428,7 +428,7 @@ FileReaderV.prototype.frv.onload = function()
 
 FileReaderV.prototype.buf = 0; FileReaderV.prototype.oldVirtual = -1; FileReaderV.prototype.oldOffset = -1;
 
-FileReaderV.prototype.setBuf = function(b) { if( this.data.length > b ){ this.data.length = b; this.dataV.length = b; } this.buf = b; }
+FileReaderV.prototype.setBuf = function(b) { if( this.data.length > b ){ this.data.length = b; } if( this.dataV.length > b ) { this.dataV.length = b; } this.buf = b; }
 
 FileReaderV.prototype.initBuf = function()
 {
