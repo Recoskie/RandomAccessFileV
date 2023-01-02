@@ -143,7 +143,7 @@ FileReaderV.prototype.getFile = function(file, func)
 //This is used to call a method after reading data by a format reader, or data tool.
 //The object reference and function name are needed in order to call the function with it's proper function and object reference.
 
-FileReaderV.prototype.call = function(obj, func) { this.Events = false; this.ref = obj; this.func = func; };
+FileReaderV.prototype.call = function(obj, func) { if( this.Events ) { this.Events = false; this.ref = obj; this.func = func; } };
 
 FileReaderV.prototype.ref = function() { }; FileReaderV.prototype.func = "";
 
@@ -218,6 +218,13 @@ FileReaderV.prototype.addV = function( Offset, DataLen, Address, AddressLen )
   //We palace the address in it's proper position after adjusting the address space to fit it.
     
   this.Map.splice( e, 0, Add );
+  
+  //Check if this effects the curent virtual address buffer.
+  
+  if( Add.VPos >= this.dataV.offset && Add.VPos <= (this.dataV.offset + this.buf) )
+  {
+    this.dataV = []; this.dataV.offset = 0x20000000000000;
+  }
 }
 
 //Reset the Virtual ram map.
@@ -262,7 +269,7 @@ FileReaderV.prototype.readV = function(size)
 
   //Read the virtual address mapped sections into buffer.
 
-  if( this.sects.length > 0 && this.fr.readyState != 1 )
+  if( this.sects.length > 0 && this.frv.readyState != 1 )
   {
     this.frv.readAsArrayBuffer(this.file.slice(this.sects[0].Pos, this.sects[0].Pos + this.sects[0].Len));
   }
@@ -428,7 +435,43 @@ FileReaderV.prototype.frv.onload = function()
 
 FileReaderV.prototype.buf = 0; FileReaderV.prototype.oldVirtual = -1; FileReaderV.prototype.oldOffset = -1;
 
-FileReaderV.prototype.setBuf = function(b) { if( this.data.length > b ){ this.data.length = b; } if( this.dataV.length > b ) { this.dataV.length = b; } this.buf = b; }
+FileReaderV.prototype.oldE = function(){};
+
+FileReaderV.prototype.setBuf = function(b)
+{
+  this.buf = b;
+  
+  if( this.Events ){ return; }
+  
+  if( this.data.length > b || this.dataV.length > b )
+  {
+    this.dataV.length = this.data.length = b;
+    
+    this.Events = true; this.ref[this.func]();
+  }
+  else
+  {
+    if( !this.Events ) { this.oldE = this.ref[this.func]; }
+    
+    this.oldOffset = this.offset;
+    this.oldVirtual = this.virtual;
+    
+    this.call(this,"lBufStart");
+    this.offset -= this.offset & 0xF; this.read(this.buf);
+  }
+}
+
+FileReaderV.prototype.lBufStart = function()
+{
+  this.call(this,"lBufEnd");
+  this.virtual -= this.virtual & 0xF; this.readV(this.buf);
+}
+
+FileReaderV.prototype.lBufEnd = function()
+{
+  this.virtual = this.oldVirtual; this.offset = this.oldOffset;
+  this.oldE(); this.oldE = function(){};
+}
 
 FileReaderV.prototype.initBuf = function()
 {
