@@ -219,7 +219,7 @@ FileReaderV.prototype.addV = function( Offset, DataLen, Address, AddressLen )
     
   this.Map.splice( e, 0, Add );
   
-  //Check if this effects the curent virtual address buffer.
+  //Check if this effects the current virtual address buffer.
   
   if( Add.VPos >= this.dataV.offset && Add.VPos <= (this.dataV.offset + this.buf) )
   {
