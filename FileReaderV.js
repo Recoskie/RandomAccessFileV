@@ -220,6 +220,7 @@ FileReaderV.prototype.addV = function( Offset, DataLen, Address, AddressLen )
   this.Map.splice( e, 0, Add );
   
   //Check if this effects the current virtual address buffer.
+  //Instead of reseting the virtual buffer making us have to call initBufV we should read the data.
   
   if( Add.VPos >= this.dataV.offset && Add.VPos <= (this.dataV.offset + this.buf) )
   {
@@ -455,6 +456,11 @@ FileReaderV.prototype.setBuf = function(b)
     
     this.oldOffset = this.offset;
     this.oldVirtual = this.virtual;
+    
+    /*lBufStart never happens after read.
+    As it is blocked from the main call back method.
+    Setting it manually creates an infinity loop.
+    because of this the virtual buffer never gets updated only the offset gets updated.*/
     
     this.call(this,"lBufStart");
     this.offset -= this.offset & 0xF; this.read(this.buf);
