@@ -220,7 +220,7 @@ FileReaderV.prototype.addV = function( Offset, DataLen, Address, AddressLen )
   this.Map.splice( e, 0, Add );
   
   //Check if this effects the current virtual address buffer.
-  //Instead of reseting the virtual buffer making us have to call initBufV we should read the data.
+  //Instead of resetting the virtual buffer making us have to call initBufV we should read the data.
   
   if( Add.VPos >= this.dataV.offset && Add.VPos <= (this.dataV.offset + this.buf) )
   {
@@ -438,46 +438,21 @@ FileReaderV.prototype.buf = 0; FileReaderV.prototype.oldVirtual = -1; FileReader
 
 FileReaderV.prototype.oldE = function(){};
 
-FileReaderV.prototype.setBuf = function(b)
+FileReaderV.prototype.setBuf = function(b, func)
 {
-  this.buf = b;
+  this.Events = true; this.buf = b;
   
-  if( this.Events ){ return; }
-  
-  if( this.data.length > b || this.dataV.length > b )
-  {
-    this.dataV.length = this.data.length = b;
-    
-    this.Events = true; this.ref[this.func]();
-  }
+  if( this.data.length > b && this.dataV.length > b ) { this.dataV.length = this.data.length = b; func(); }
   else
   {
-    if( !this.Events ) { this.oldE = this.ref[this.func]; }
-    
-    this.oldOffset = this.offset;
-    this.oldVirtual = this.virtual;
-    
-    /*lBufStart never happens after read.
-    As it is blocked from the main call back method.
-    Setting it manually creates an infinity loop.
-    because of this the virtual buffer never gets updated only the offset gets updated.*/
-    
-    this.call(this,"lBufStart");
-    this.offset -= this.offset & 0xF; this.read(this.buf);
+    this.oldE = func || function(){}; this.oldOffset = this.offset; this.oldVirtual = this.virtual;
+    this.call( this, "lBufStart" ); this.offset -= this.offset & 0xF; this.read(this.buf);
   }
 }
 
-FileReaderV.prototype.lBufStart = function()
-{
-  this.call(this,"lBufEnd");
-  this.virtual -= this.virtual & 0xF; this.readV(this.buf);
-}
+FileReaderV.prototype.lBufStart = function() { this.call(this,"lBufEnd"); this.virtual -= this.virtual & 0xF; this.readV(this.buf); }
 
-FileReaderV.prototype.lBufEnd = function()
-{
-  this.virtual = this.oldVirtual; this.offset = this.oldOffset;
-  this.oldE(); this.oldE = function(){};
-}
+FileReaderV.prototype.lBufEnd = function() { this.virtual = this.oldVirtual; this.offset = this.oldOffset; this.oldE(); }
 
 FileReaderV.prototype.initBuf = function()
 {
