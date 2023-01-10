@@ -286,7 +286,7 @@ FileReaderV.prototype.readV = function(size)
         if(this.comps[i].visible) { this.comps[i].onread(this); }
       }
     }
-    else { this.ref[this.func](this); }
+    else { this.Events = true; this.ref[this.func](this); }
   }
 }
 
