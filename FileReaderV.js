@@ -37,7 +37,7 @@ VRA.prototype.setEnd = function( Address )
       
   //If there still is data after the added address.
       
-  this.Len = ( this.Len < this.VLen ) ? this.Len : this.VLen; 
+  this.Len = ( this.Len < this.VLen ) ? this.Len : this.VLen;
       
   //Calculate the bytes written into.
       
@@ -91,11 +91,11 @@ function FileReaderV(file)
 {
   this.file = (file instanceof File) ? file : new File([],""); this.offset = 0; this.virtual = 0;
   
-  this.comps = []; this.Events = true;
+  this.comps = []; this.Events = true; this.temp = false;
   
-  this.data = []; this.dataV = [];
+  this.data = []; this.dataV = []; this.tempD = [];
 
-  this.data.offset = 0; this.dataV.offset = 0;
+  this.data.offset = 0; this.dataV.offset = 0; this.tempD.offset = 0;
   
   this.fr.parent = this.frv.parent = this;
 
@@ -143,7 +143,9 @@ FileReaderV.prototype.getFile = function(file, func)
 //This is used to call a method after reading data by a format reader, or data tool.
 //The object reference and function name are needed in order to call the function with it's proper function and object reference.
 
-FileReaderV.prototype.call = function(obj, func) { if( this.Events ) { this.Events = false; this.ref = obj; this.func = func; } };
+FileReaderV.prototype.bufRead = function(obj, func) { if( this.Events ) { this.Events = false; this.ref = obj; this.func = func; } };
+
+FileReaderV.prototype.onRead = function(obj, func) { if( this.Events ) { this.temp = !(this.Events = false); this.ref = obj; this.func = func; } };
 
 FileReaderV.prototype.ref = function() { }; FileReaderV.prototype.func = "";
 
@@ -246,7 +248,7 @@ FileReaderV.prototype.read = function(size)
 
 FileReaderV.prototype.readV = function(size)
 {
-  this.dataV = []; this.dataV.offset = this.virtual;
+  if( !this.temp ) { this.dataV = []; this.dataV.offset = this.virtual; } else { this.tempD = []; this.tempD.offset = this.virtual; }
 
   //Seek address if outside current address space.
     
@@ -286,12 +288,23 @@ FileReaderV.prototype.readV = function(size)
         if(this.comps[i].visible) { this.comps[i].onread(this); }
       }
     }
-    else { this.Events = true; this.ref[this.func](this); }
+    else
+    {
+      this.Events = true; if( !this.temp ) { this.ref[this.func]( this ); }
+  
+      else
+      {
+        this.virtual = this.oldVirtual; this.offset = this.oldOffset;
+        this.temp = false; var t = []; t.offset = this.offset; this.ref[this.func](t);
+      }
+    }
   }
 }
 
 FileReaderV.prototype.seek = function(pos)
 {
+  if( this.temp && this.oldOffset == -1 ) { this.oldOffset = this.offset; this.oldVirtual = this.virtual; }
+
   /*It is possible the same offsets are mapped to multiple VRA addresses.
   seek moves virtual address around in current VRA only.*/
   
@@ -304,11 +317,13 @@ FileReaderV.prototype.seek = function(pos)
 
   //It is important that both the virtual and offset buffers are synchronized.
 
-  if( this.Events ) { this.oldOffset = this.offset; this.oldVirtual = this.virtual; this.call(this, "seekEventV"); this.initBufV(); }
+  if( this.Events ) { this.oldOffset = this.offset; this.oldVirtual = this.virtual; this.bufRead(this, "seekEventV"); this.initBufV(); }
 }
 
 FileReaderV.prototype.seekV = function(pos)
 {
+  if( this.temp && this.oldVirtual == -1 ) { this.oldOffset = this.offset; this.oldVirtual = this.virtual; }
+
   var r = 0;
 
   //If address is in range of current address index.
@@ -370,10 +385,10 @@ FileReaderV.prototype.seekV = function(pos)
 
   //if the current buffer is not within the seek location than it must be updated before calling events.
   
-  if( this.Events ) { this.oldOffset = this.offset; this.oldVirtual = this.virtual; this.call(this,"seekEventV"); this.initBufV(); }
+  if( this.Events ) { this.oldOffset = this.offset; this.oldVirtual = this.virtual; this.bufRead(this,"seekEventV"); this.initBufV(); }
 }
 
-FileReaderV.prototype.seekEventV = function() { this.call(this, "seekEvent"); this.initBuf(); }
+FileReaderV.prototype.seekEventV = function() { this.bufRead(this, "seekEvent"); this.initBuf(); }
 
 FileReaderV.prototype.seekEvent = function()
 {
@@ -391,7 +406,8 @@ FileReaderV.prototype.sects = []; FileReaderV.prototype.sectN = 0;
 
 FileReaderV.prototype.fr.onload = function()
 {
-  this.parent.data = new Uint8Array(this.result); this.parent.data.offset = this.parent.offset;
+  if( !this.parent.temp ) { this.parent.data = new Uint8Array(this.result); this.parent.data.offset = this.parent.offset; }
+  else { this.parent.tempD = new Uint8Array(this.result); this.parent.tempD.offset = this.parent.offset; }
 
   if( this.parent.Events )
   {
@@ -400,18 +416,27 @@ FileReaderV.prototype.fr.onload = function()
       this.parent.comps[i].onread(this.parent);
     }
   }
-  else { this.parent.Events = true; this.parent.ref[this.parent.func](this.parent); }
+  else
+  {
+    this.parent.Events = true; if( !this.parent.temp ) { this.parent.ref[this.parent.func]( this.parent ); }
+  
+    else
+    {
+      this.parent.virtual = this.parent.oldVirtual; this.parent.offset = this.parent.oldOffset;
+      this.parent.temp = false; this.parent.ref[this.parent.func]( this.parent.tempD );
+    }
+  }
 }
 
 FileReaderV.prototype.frv.onload = function()
 {
   //Read data sections. Return after last section is read into data buffer V.
 
-  var sectN = this.parent.sectN, map = this.parent.sects[sectN], sects = this.parent.sects.length;
+  var sectN = this.parent.sectN, map = this.parent.sects[sectN], sects = this.parent.sects.length, data = !this.parent.temp ? this.parent.dataV : this.parent.tempD;
 
   //Place current read data into virtual space.
 
-  for( var buf = new Uint8Array(this.result), v = map.VPos - this.parent.virtual, i = 0; i < map.VLen; this.parent.dataV[v++] = isNaN(buf[i]) ? 0 : buf[i], i++ );
+  for( var buf = new Uint8Array(this.result), v = map.VPos - this.parent.virtual, i = 0; i < map.VLen; data[v++] = isNaN(buf[i]) ? 0 : buf[i], i++ );
 
   //Read next section.
     
@@ -421,7 +446,7 @@ FileReaderV.prototype.frv.onload = function()
 
   else
   {
-    this.parent.sects = []; this.parent.sectN = 0; this.parent.dataV.offset = this.parent.virtual;
+    this.parent.sects = []; this.parent.sectN = 0; data.offset = this.parent.virtual;
 
     if( this.parent.Events )
     {
@@ -430,7 +455,16 @@ FileReaderV.prototype.frv.onload = function()
         this.parent.comps[i].onread(this.parent);
       }
     }
-    else { this.parent.Events = true; this.parent.ref[this.parent.func](this.parent); }
+    else
+    {
+      this.parent.Events = true; if( !this.parent.temp ) { this.parent.ref[this.parent.func]( this.parent ); }
+    
+      else
+      {
+        this.parent.virtual = this.parent.oldVirtual; this.parent.offset = this.parent.oldOffset;
+        this.parent.temp = false; this.parent.ref[this.parent.func]( this.parent.tempD );
+      }
+    }
   }
 }
 
@@ -446,11 +480,11 @@ FileReaderV.prototype.setBuf = function(b, func)
   else
   {
     this.oldE = func || function(){}; this.oldOffset = this.offset; this.oldVirtual = this.virtual;
-    this.call( this, "lBufStart" ); this.offset -= this.offset & 0xF; this.read(this.buf);
+    this.bufRead( this, "lBufStart" ); this.offset -= this.offset & 0xF; this.read(this.buf);
   }
 }
 
-FileReaderV.prototype.lBufStart = function() { this.call(this,"lBufEnd"); this.virtual -= this.virtual & 0xF; this.readV(this.buf); }
+FileReaderV.prototype.lBufStart = function() { this.bufRead(this,"lBufEnd"); this.virtual -= this.virtual & 0xF; this.readV(this.buf); }
 
 FileReaderV.prototype.lBufEnd = function() { this.virtual = this.oldVirtual; this.offset = this.oldOffset; this.oldE(); }
 
