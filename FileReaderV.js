@@ -143,11 +143,11 @@ FileReaderV.prototype.getFile = function(file, func)
 //This is used to call a method after reading data by a format reader, or data tool.
 //The object reference and function name are needed in order to call the function with it's proper function and object reference.
 
-FileReaderV.prototype.bufRead = function(obj, func) { if( this.Events ) { this.Events = false; this.ref = obj; this.func = func; } };
+FileReaderV.prototype.ref = function() { }; FileReaderV.prototype.func = ""; FileReaderV.prototype.arg = undefined;
 
-FileReaderV.prototype.onRead = function(obj, func) { if( this.Events ) { this.temp = !(this.Events = false); this.ref = obj; this.func = func; } };
+FileReaderV.prototype.bufRead = function(obj, func, arg) { if( this.Events ) { this.Events = false; this.ref = obj; this.func = func; this.arg = arg; } };
 
-FileReaderV.prototype.ref = function() { }; FileReaderV.prototype.func = "";
+FileReaderV.prototype.onRead = function(obj, func, arg) { if( this.Events ) { this.temp = !(this.Events = false); this.ref = obj; this.func = func; this.arg = arg; } };
 
 //Add an virtual address.
   
@@ -248,7 +248,7 @@ FileReaderV.prototype.read = function(size)
 
 FileReaderV.prototype.readV = function(size)
 {
-  if( !this.temp ) { this.dataV = []; this.dataV.offset = this.virtual; } else { this.tempD = []; this.tempD.offset = this.virtual; }
+  if( !this.temp ) { this.dataV.length = 0; this.dataV.offset = this.virtual; } else { this.tempD.length = 0; this.tempD.offset = this.virtual; }
 
   //Seek address if outside current address space.
     
@@ -290,12 +290,12 @@ FileReaderV.prototype.readV = function(size)
     }
     else
     {
-      this.Events = true; if( !this.temp ) { this.ref[this.func]( this ); }
+      this.Events = true; if( !this.temp ) { this.ref[this.func]( this.arg ); }
   
       else
       {
         this.virtual = this.oldVirtual; this.offset = this.oldOffset;
-        this.temp = false; var t = []; t.offset = this.offset; this.ref[this.func](t);
+        this.temp = false; var t = []; t.offset = this.offset; this.ref[this.func](this.arg);
       }
     }
   }
@@ -418,12 +418,12 @@ FileReaderV.prototype.fr.onload = function()
   }
   else
   {
-    this.parent.Events = true; if( !this.parent.temp ) { this.parent.ref[this.parent.func]( this.parent ); }
+    this.parent.Events = true; if( !this.parent.temp ) { this.parent.ref[this.parent.func]( this.parent.arg ); }
   
     else
     {
       this.parent.virtual = this.parent.oldVirtual; this.parent.offset = this.parent.oldOffset;
-      this.parent.temp = false; this.parent.ref[this.parent.func]( this.parent.tempD );
+      this.parent.temp = false; this.parent.ref[this.parent.func]( this.parent.arg );
     }
   }
 }
@@ -457,12 +457,12 @@ FileReaderV.prototype.frv.onload = function()
     }
     else
     {
-      this.parent.Events = true; if( !this.parent.temp ) { this.parent.ref[this.parent.func]( this.parent ); }
+      this.parent.Events = true; if( !this.parent.temp ) { this.parent.ref[this.parent.func]( this.parent.arg ); }
     
       else
       {
         this.parent.virtual = this.parent.oldVirtual; this.parent.offset = this.parent.oldOffset;
-        this.parent.temp = false; this.parent.ref[this.parent.func]( this.parent.tempD );
+        this.parent.temp = false; this.parent.ref[this.parent.func]( this.parent.arg );
       }
     }
   }
@@ -494,7 +494,7 @@ FileReaderV.prototype.initBuf = function()
   {
     this.offset -= this.offset & 0xF; this.read(this.buf);
   }
-  else { this.Events = true; this.ref[this.func](); }
+  else { this.Events = true; this.ref[this.func](this.arg); }
 }
 
 FileReaderV.prototype.initBufV = function()
@@ -503,7 +503,7 @@ FileReaderV.prototype.initBufV = function()
   {
     this.virtual -= this.virtual & 0xF; this.readV(this.buf);
   }
-  else { this.Events = true; this.ref[this.func](); }
+  else { this.Events = true; this.ref[this.func](this.arg); }
 }
         
 FileReaderV.prototype.fr.onerror = FileReaderV.prototype.frv.onerror = function() { console.error("File IO Error!"); }
