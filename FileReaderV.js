@@ -20,7 +20,7 @@ function VRA( Pos, Len, VPos, VLen )
 
   this.Mapped = Len != 0; this.Pos = Pos; this.Len = Len; this.VPos = VPos; this.VLen = VLen;
 }
-    
+
 //Set the end of an address when another address writes into this address.
 
 VRA.prototype.setEnd = function( Address )
