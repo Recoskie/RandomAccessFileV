@@ -144,10 +144,13 @@ FileReaderV.prototype.getFile = function(file, func)
 //The object reference and function name are needed in order to call the function with it's proper function and object reference.
 
 FileReaderV.prototype.ref = function() { }; FileReaderV.prototype.func = ""; FileReaderV.prototype.arg = undefined;
+FileReaderV.prototype.sRef = function() { }; FileReaderV.prototype.sFunc = ""; FileReaderV.prototype.arg = undefined;
 
 FileReaderV.prototype.bufRead = function(obj, func, arg) { if( this.Events ) { this.Events = false; this.ref = obj; this.func = func; this.arg = arg; } };
 
 FileReaderV.prototype.onRead = function(obj, func, arg) { if( this.Events ) { this.temp = !(this.Events = false); this.ref = obj; this.func = func; this.arg = arg; } };
+
+FileReaderV.prototype.onSeek = function(obj, func){ this.sRef = obj; this.sFunc = func; }
 
 //Add an virtual address.
   
@@ -398,6 +401,10 @@ FileReaderV.prototype.seekEvent = function()
   {
     if(this.comps[i].visible) { this.comps[i].onseek(this); }
   }
+  
+  //After seek event completes event trigger.
+  
+  if( this.sFunc != "" ) { this.sRef[this.sFunc](); this.sFunc = ""; }
 }
 
 FileReaderV.prototype.fr = new FileReader(); FileReaderV.prototype.frv = new FileReader();
