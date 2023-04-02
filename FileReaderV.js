@@ -516,8 +516,10 @@ FileReaderV.prototype.initBufV = function()
 //This is a function that waits till all data processing is finished before calling a method.
 
 FileReaderV.prototype.wait = function(func) { if( this.Events ) { func(); return(false); } setTimeout(function(func,r){r.wait(func);},0,func,this); return(true); }
-        
-FileReaderV.prototype.fr.onerror = FileReaderV.prototype.frv.onerror = function() { console.error("File IO Error!"); }
+
+FileReaderV.prototype.onerror = function() {}
+
+FileReaderV.prototype.fr.onerror = FileReaderV.prototype.frv.onerror = function() { this.parent.onerror(); }
 
 //Used only to debug address space.
 
