@@ -519,7 +519,7 @@ FileReaderV.prototype.wait = function(func) { if( this.Events ) { func(); return
 
 FileReaderV.prototype.onerror = function() {}
 
-FileReaderV.prototype.fr.onerror = FileReaderV.prototype.frv.onerror = function() { this.parent.onerror(); }
+FileReaderV.prototype.fr.onerror = FileReaderV.prototype.frv.onerror = function() { this.parent.Events = true; this.parent.onerror(); }
 
 //Used only to debug address space.
 
