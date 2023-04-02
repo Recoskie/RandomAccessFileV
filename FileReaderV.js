@@ -512,6 +512,10 @@ FileReaderV.prototype.initBufV = function()
   }
   else { this.Events = true; this.ref[this.func](this.arg); }
 }
+
+//This is a function that waits till all data processing is finished before calling a method.
+
+FileReaderV.prototype.wait = function(func, cb) { cb = cb instanceof FileReaderV ? cb : this; if( cb.Events ) { func(); return; } setTimeout(cb.wait,0,func,cb); }
         
 FileReaderV.prototype.fr.onerror = FileReaderV.prototype.frv.onerror = function() { console.error("File IO Error!"); }
 
