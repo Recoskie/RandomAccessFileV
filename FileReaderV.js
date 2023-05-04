@@ -119,26 +119,23 @@ FileReaderV.prototype.setTarget = function(file)
 
 //Returns file to select function.
 
-FileReaderV.prototype.getFile = function(file, func)
+FileReaderV.prototype.getFile = function(file, func, CORS)
 {
-  if(typeof(file) == "string")
+  var self = this; if(typeof(file) == "string")
   {
-    var r = new XMLHttpRequest();
-    
-    r.open('GET', file, true); r.responseType = 'blob';
-    
-    r.onload = function()
+    //Only use CORS when needed.
+
+    fetch((CORS ? "https://corsproxy.io/?url=" : "") + file, {cache: "no-cache"}).then(async function(r)
     {
-      func(new File([r.response],file));
-    }
-    
-    r.send();
+      if(r.status !== 200){ self.getError(); return; } func(new File([await r.blob()], file));
+    }).catch(function(){if(!CORS){self.getFile(file,func,true);}});
   }
   
   //Everything else then return an empty file.
   
-  return( new File([],"") );
+  return( new File([],"No file") );
 }
+FileReaderV.prototype.getError = function(){}
 
 //This is used to call a method after reading data by a format reader, or data tool.
 //The object reference and function name are needed in order to call the function with it's proper function and object reference.
