@@ -125,10 +125,10 @@ FileReaderV.prototype.getFile = function(file, func, CORS)
   {
     //Only use CORS when needed.
 
-    fetch((CORS ? "https://corsproxy.io/?url=" : "") + file, {cache: "no-cache"}).then(async function(r)
+    fetch((CORS ? "https://thingproxy.freeboard.io/fetch/" : "") + file, {cache: "no-cache"}).then(async function(r)
     {
-      if(r.status !== 200){ self.getError(); return; } func(new File([await r.blob()], file));
-    }).catch(function(){if(!CORS){self.getFile(file,func,true);}});
+      if(r.status !== 200){self.getError(r.status); return;} func(new File([await r.blob()], file));
+    }).catch(function(){if(!CORS){self.getFile(file,func,true);}else{self.getError(-1);return;}});
   }
   
   //Everything else then return an empty file.
