@@ -123,17 +123,11 @@ FileReaderV.prototype.getFile = function(file, func)
 {
   var self = this; if(typeof(file) == "string")
   {
-    //Only use CORS when needed.
-
     fetch(file, {cache: "no-cache"}).then(async function(r)
     {
-      if(r.status !== 200){self.getError(r.status);return;}func(new File([await r.blob()], file));
-    }).catch(function(){self.getError(-1);return;});
+      if(r.status !== 200){self.getError();return;}func(new File([await r.blob()], file));
+    }).catch(function(){self.getError();return;});
   }
-  
-  //Everything else then return an empty file.
-  
-  return( new File([],"No file") );
 }
 FileReaderV.prototype.getError = function(){}
 
