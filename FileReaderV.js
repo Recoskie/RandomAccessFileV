@@ -119,11 +119,11 @@ FileReaderV.prototype.setTarget = function(file)
 
 //Returns file to select function.
 
-FileReaderV.prototype.getFile = function(file, func, cros)
+FileReaderV.prototype.getFile = function(file, func, cors)
 {
   var self = this; if(typeof(file) == "string")
   {
-    fetch((cros ? "https://corsproxy.io/?" : "") + file, {cache: "no-cache"}).then(async function(r)
+    fetch((cors ? "https://corsproxy.io/?" : "") + file, {cache: "no-cache"}).then(async function(r)
     {
       if(r.status !== 200){self.getError();return;}func(new File([await r.blob()], file));
     }).catch(function(){if(cros){self.getError();return;}else{self.getFile(file,func,true);}});
