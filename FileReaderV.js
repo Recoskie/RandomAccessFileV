@@ -488,7 +488,7 @@ FileReaderV.prototype.lBufEnd = function() { this.virtual = this.oldVirtual; thi
 
 FileReaderV.prototype.initBuf = function()
 {
-  if( this.offset <= this.data.offset || this.offset >= (this.data.offset + this.data.length) )
+  if( this.offset <= this.data.offset || this.offset >= (this.data.offset + this.buf) )
   {
     this.offset -= this.offset & 0xF; this.read(this.buf);
   }
@@ -497,7 +497,7 @@ FileReaderV.prototype.initBuf = function()
 
 FileReaderV.prototype.initBufV = function()
 {
-  if( this.virtual <= this.dataV.offset || this.virtual >= (this.dataV.offset + this.dataV.length) )
+  if( this.virtual <= this.dataV.offset || this.virtual >= (this.dataV.offset + this.buf) )
   {
     this.virtual -= this.virtual & 0xF; this.readV(this.buf);
   }
