@@ -89,6 +89,8 @@ VRA.prototype.toString = function()
 
 function FileReaderV(file)
 {
+  this.fileInit = true;
+  
   this.file = (file instanceof File) ? file : new File([],""); this.offset = 0; this.virtual = 0;
   
   this.comps = []; this.Events = true; this.temp = false;
@@ -114,8 +116,12 @@ function FileReaderV(file)
 
 FileReaderV.prototype.setTarget = function(file)
 {
-  this.file = (file instanceof File) ? file : new File([],""); this.size = file.size; this.name = file.name;
+  this.fileInit = false; this.file = (file instanceof File) ? file : new File([],""); this.size = file.size; this.name = file.name;
+  
+  this.init();
 }
+
+FileReaderV.prototype.init = function(r) { r = r || false; if( !r ) { this.wait(this,"init"); return; } this.seek(0); }
 
 //Returns file to select function.
 
@@ -395,7 +401,7 @@ FileReaderV.prototype.seekEvent = function()
   
   //After seek event completes event trigger.
   
-  if( this.sFunc != "" ) { this.sRef[this.sFunc](); this.sFunc = ""; }
+  if( this.sFunc != "" ) { this.sRef[this.sFunc](); this.sFunc = ""; }; this.fileInit = true;
 }
 
 FileReaderV.prototype.fr = new FileReader(); FileReaderV.prototype.frv = new FileReader();
@@ -506,7 +512,7 @@ FileReaderV.prototype.initBufV = function()
 
 //This is a function that waits till all data processing is finished before calling a method.
 
-FileReaderV.prototype.wait = function(func) { if( this.Events ) { func(); return(false); } setTimeout(function(func,r){r.wait(func);},0,func,this); return(true); }
+FileReaderV.prototype.wait = function(obj,func) { if( this.Events ) { obj[func](true); return(false); } setTimeout(function(obj,func,r){r.wait(obj,func);},0,obj,func,this); return(true); }
 
 FileReaderV.prototype.onerror = function() {}
 
