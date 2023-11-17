@@ -129,7 +129,7 @@ FileReaderV.prototype.getFile = function(file, func, cors)
 {
   var self = this; if(typeof(file) == "string")
   {
-    fetch((cors ? "https://corsproxy.io/?" : "") + file, {cache: "no-cache"}).then(async function(r)
+    fetch((cors ? ("https://corsproxy.io/?" + encodeURIComponent(file)) : file), {cache: "no-cache"}).then(async function(r)
     {
       if(r.status !== 200){self.getError();return;}func(new File([await r.blob()], file));
     }).catch(function(){if(cors){self.getError();return;}else{self.getFile(file,func,true);}});
