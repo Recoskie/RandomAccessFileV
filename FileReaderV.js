@@ -248,7 +248,7 @@ FileReaderV.prototype.read = function(size)
 
 FileReaderV.prototype.readV = function(size)
 {
-  if( !this.temp ) { this.dataV.length = 0; this.dataV.offset = this.virtual; } else { this.tempD.length = 0; this.tempD.offset = this.virtual; }
+  if( !this.temp ) { this.dataV.length = 0; this.dataV.offset = this.virtual; } else { this.tempD = []; this.tempD.length = 0; this.tempD.offset = this.virtual; }
 
   //Seek address if outside current address space.
     
