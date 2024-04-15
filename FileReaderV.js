@@ -388,6 +388,12 @@ FileReaderV.prototype.seekV = function(pos)
   if( this.Events ) { this.oldOffset = this.offset; this.oldVirtual = this.virtual; this.bufRead(this,"seekEventV"); this.initBufV(); }
 }
 
+//Remaining data in the current seeked RAM address.
+
+FileReaderV.prototype.lengthV = function() { return(Math.max(0, (this.curVra.VEnd - this.virtual) + 1)); }
+
+//Event handling.
+
 FileReaderV.prototype.seekEventV = function() { this.bufRead(this, "seekEvent"); this.initBuf(); }
 
 FileReaderV.prototype.seekEvent = function()
